@@ -1,0 +1,119 @@
+package middleware
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"strings"
+
+	"collaborative-editor/internal/auth"
+	"collaborative-editor/internal/errors"
+)
+
+type contextKey string
+
+const (
+	userIDKey   contextKey = "userID"
+	usernameKey contextKey = "username"
+	emailKey    contextKey = "email"
+)
+
+// AuthMiddleware validates JWT tokens for protected routes
+func AuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get token from Authorization header
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			respondWithError(w, errors.NewAppError(
+				errors.ErrUnauthorized.Code,
+				"Authorization header is required",
+				nil,
+			))
+			return
+		}
+
+		// Check if header starts with "Bearer "
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			respondWithError(w, errors.NewAppError(
+				errors.ErrUnauthorized.Code,
+				"Authorization header must be in format: Bearer <token>",
+				nil,
+			))
+			return
+		}
+
+		tokenString := parts[1]
+
+		// Validate token
+		claims, err := auth.ValidateToken(tokenString)
+		if err != nil {
+			respondWithError(w, errors.NewAppError(
+				errors.ErrUnauthorized.Code,
+				"Invalid or expired token",
+				err,
+			))
+			return
+		}
+
+		// Add user information to request context
+		ctx := r.Context()
+		ctx = withUserID(ctx, claims.UserID)
+		ctx = withUsername(ctx, claims.Username)
+		ctx = withEmail(ctx, claims.Email)
+
+		// Call next handler with updated context
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// Context helper functions
+func withUserID(ctx context.Context, userID string) context.Context {
+	return context.WithValue(ctx, userIDKey, userID)
+}
+
+func withUsername(ctx context.Context, username string) context.Context {
+	return context.WithValue(ctx, usernameKey, username)
+}
+
+func withEmail(ctx context.Context, email string) context.Context {
+	return context.WithValue(ctx, emailKey, email)
+}
+
+// GetUserID retrieves user ID from context
+func GetUserID(ctx context.Context) string {
+	if userID, ok := ctx.Value(userIDKey).(string); ok {
+		return userID
+	}
+	return ""
+}
+
+// GetUsername retrieves username from context
+func GetUsername(ctx context.Context) string {
+	if username, ok := ctx.Value(usernameKey).(string); ok {
+		return username
+	}
+	return ""
+}
+
+// GetEmail retrieves email from context
+func GetEmail(ctx context.Context) string {
+	if email, ok := ctx.Value(emailKey).(string); ok {
+		return email
+	}
+	return ""
+}
+
+// respondWithError sends an error response
+func respondWithError(w http.ResponseWriter, err error) {
+	appErr, ok := err.(*errors.AppError)
+	if !ok {
+		appErr = errors.ErrInternalServer
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(appErr.Code)
+	json.NewEncoder(w).Encode(map[string]string{
+		"error": appErr.Message,
+	})
+}

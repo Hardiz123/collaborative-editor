@@ -5,10 +5,9 @@
 Create a `.env` file in the root directory with the following variables:
 
 ```env
-COUCHBASE_CONNECTION_STRING=couchbases://cb.jlqsadh62vp6qu0.cloud.couchbase.com
-COUCHBASE_USERNAME=collab-access
-COUCHBASE_PASSWORD=Password@123
-COUCHBASE_BUCKET_NAME=default
+
+COUCHBASE_BUCKET_NAME=collab-editor
+JWT_SECRET=your-secret-key-change-in-production
 ```
 
 **Note:** The `.env` file is gitignored to keep your credentials secure. Never commit it to version control.
@@ -67,4 +66,55 @@ Register a new user.
 - `400 Bad Request`: Invalid request payload or missing fields
 - `409 Conflict`: User with email or username already exists
 - `500 Internal Server Error`: Server error
+
+### POST /login
+Authenticate a user and receive a JWT token.
+
+**Request Body:**
+```json
+{
+  "email": "john@example.com",
+  "password": "securepassword123"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": "uuid-here",
+  "username": "johndoe",
+  "email": "john@example.com",
+  "created_at": "2024-01-01T00:00:00Z",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "message": "Login successful"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid request payload or missing fields
+- `401 Unauthorized`: Invalid email/username or password
+- `500 Internal Server Error`: Server error
+
+### GET /protected
+Access a protected route (requires JWT authentication).
+
+**Headers:**
+```
+Authorization: Bearer <your-jwt-token>
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "This is a protected route",
+  "user": {
+    "id": "uuid-here",
+    "username": "johndoe",
+    "email": "john@example.com"
+  }
+}
+```
+
+**Error Responses:**
+- `401 Unauthorized`: Missing or invalid JWT token
 

@@ -53,6 +53,9 @@ func (u *User) ToDocument() *UserDocument {
 
 // FromDocument creates a User from UserDocument
 func FromDocument(doc *UserDocument) *User {
+	if doc == nil {
+		return nil
+	}
 	return &User{
 		ID:           doc.ID,
 		Username:     doc.Username,

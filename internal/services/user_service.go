@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 
+	"collaborative-editor/internal/auth"
 	"collaborative-editor/internal/errors"
 	"collaborative-editor/internal/repository"
 	"collaborative-editor/internal/validation"
@@ -53,6 +54,7 @@ type LoginResponse struct {
 	Username  string `json:"username"`
 	Email     string `json:"email"`
 	CreatedAt string `json:"created_at"`
+	Token     string `json:"token"` // JWT token for authentication
 	Message   string `json:"message"`
 }
 
@@ -163,12 +165,19 @@ func (s *UserService) Login(ctx context.Context, req *LoginRequest) (*LoginRespo
 		)
 	}
 
-	// Password matches - login successful
+	// Password matches - generate JWT token
+	token, err := auth.GenerateToken(u.ID, u.Username, u.Email)
+	if err != nil {
+		return nil, errors.WrapError(errors.ErrInternalServer, fmt.Errorf("failed to generate token: %w", err))
+	}
+
+	// Login successful
 	return &LoginResponse{
 		ID:        u.ID,
 		Username:  u.Username,
 		Email:     u.Email,
 		CreatedAt: u.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		Token:     token,
 		Message:   "Login successful",
 	}, nil
 }

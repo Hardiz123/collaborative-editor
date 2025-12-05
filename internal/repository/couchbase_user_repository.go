@@ -68,7 +68,7 @@ func (r *CouchbaseUserRepository) GetByID(ctx context.Context, userID string) (*
 // GetByEmail retrieves a user by their email
 func (r *CouchbaseUserRepository) GetByEmail(ctx context.Context, email string) (*user.User, error) {
 	query := fmt.Sprintf(
-		"SELECT META().id, u.* FROM `%s`.`%s`.`%s` u WHERE u.email = $1 LIMIT 1",
+		"SELECT META().id as id, u.* FROM `%s`.`%s`.`%s` u WHERE u.email = $1 LIMIT 1",
 		db.GetBucketName(),
 		db.GetScopeName(),
 		db.GetCollectionName(),
@@ -87,18 +87,19 @@ func (r *CouchbaseUserRepository) GetByEmail(ctx context.Context, email string) 
 	}
 	defer queryResult.Close()
 
-	var result struct {
-		ID   string              `json:"id"`
-		User *user.UserDocument `json:"u"`
-	}
+	// The query returns fields directly, not nested under "u"
+	var doc user.UserDocument
 
 	if queryResult.Next() {
-		err := queryResult.Row(&result)
+		err := queryResult.Row(&doc)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse query result: %w", err)
 		}
 		// Convert UserDocument to User
-		return user.FromDocument(result.User), nil
+		if result := user.FromDocument(&doc); result != nil {
+			return result, nil
+		}
+		return nil, fmt.Errorf("failed to convert document to user")
 	}
 
 	return nil, fmt.Errorf("user not found")
@@ -107,7 +108,7 @@ func (r *CouchbaseUserRepository) GetByEmail(ctx context.Context, email string) 
 // GetByUsername retrieves a user by their username
 func (r *CouchbaseUserRepository) GetByUsername(ctx context.Context, username string) (*user.User, error) {
 	query := fmt.Sprintf(
-		"SELECT META().id, u.* FROM `%s`.`%s`.`%s` u WHERE u.username = $1 LIMIT 1",
+		"SELECT META().id as id, u.* FROM `%s`.`%s`.`%s` u WHERE u.username = $1 LIMIT 1",
 		db.GetBucketName(),
 		db.GetScopeName(),
 		db.GetCollectionName(),
@@ -126,18 +127,19 @@ func (r *CouchbaseUserRepository) GetByUsername(ctx context.Context, username st
 	}
 	defer queryResult.Close()
 
-	var result struct {
-		ID   string              `json:"id"`
-		User *user.UserDocument `json:"u"`
-	}
+	// The query returns fields directly, not nested under "u"
+	var doc user.UserDocument
 
 	if queryResult.Next() {
-		err := queryResult.Row(&result)
+		err := queryResult.Row(&doc)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse query result: %w", err)
 		}
 		// Convert UserDocument to User
-		return user.FromDocument(result.User), nil
+		if result := user.FromDocument(&doc); result != nil {
+			return result, nil
+		}
+		return nil, fmt.Errorf("failed to convert document to user")
 	}
 
 	return nil, fmt.Errorf("user not found")

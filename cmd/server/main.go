@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"collaborative-editor/internal/auth"
 	"collaborative-editor/internal/db"
 	"collaborative-editor/internal/handlers"
 	"collaborative-editor/internal/repository"
@@ -17,6 +18,11 @@ func main() {
 	// Load environment variables from .env file (if it exists)
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using system environment variables")
+	}
+
+	// Initialize JWT
+	if err := auth.InitJWT(); err != nil {
+		log.Fatalf("Failed to initialize JWT: %v", err)
 	}
 
 	// Connect to Couchbase

@@ -10,8 +10,11 @@ import (
 )
 
 var (
-	cluster *gocb.Cluster
-	bucket  *gocb.Bucket
+	cluster        *gocb.Cluster
+	bucket         *gocb.Bucket
+	bucketName     string
+	scopeName      = "user"
+	collectionName = "users"
 )
 
 // Connect initializes the Couchbase connection
@@ -19,6 +22,13 @@ func Connect() error {
 	connectionString := os.Getenv("COUCHBASE_CONNECTION_STRING")
 	username := os.Getenv("COUCHBASE_USERNAME")
 	password := os.Getenv("COUCHBASE_PASSWORD")
+	bucketName = os.Getenv("COUCHBASE_BUCKET_NAME")
+
+	// Default to collab-editor if not set
+	if bucketName == "" {
+		bucketName = "collab-editor"
+		log.Println("COUCHBASE_BUCKET_NAME not set, using default: collab-editor")
+	}
 
 	// Validate environment variables
 	if connectionString == "" {
@@ -32,7 +42,8 @@ func Connect() error {
 	}
 
 	// Connect to the cluster
-	cluster, err := gocb.Connect(connectionString, gocb.ClusterOptions{
+	var err error
+	cluster, err = gocb.Connect(connectionString, gocb.ClusterOptions{
 		Authenticator: gocb.PasswordAuthenticator{
 			Username: username,
 			Password: password,
@@ -48,8 +59,164 @@ func Connect() error {
 		return fmt.Errorf("failed to wait for cluster ready: %w", err)
 	}
 
-	log.Println("Successfully connected to Couchbase")
+	// Open the bucket
+	bucket = cluster.Bucket(bucketName)
+
+	// Wait for the bucket to be ready
+	err = bucket.WaitUntilReady(10*time.Second, nil)
+	if err != nil {
+		return fmt.Errorf("failed to wait for bucket ready: %w", err)
+	}
+
+	// Ensure scope and collection exist
+	if err := ensureScopeAndCollection(); err != nil {
+		return fmt.Errorf("failed to setup scope and collection: %w", err)
+	}
+
+	log.Printf("Successfully connected to Couchbase bucket: %s", bucketName)
 	return nil
+}
+
+// ensureScopeAndCollection checks if the scope exists, creates it if not, and ensures the collection exists
+func ensureScopeAndCollection() error {
+	// Get bucket manager to manage scopes and collections
+	bucketMgr := bucket.Collections()
+
+	// Check if scope exists by trying to get it
+	scopes, err := bucketMgr.GetAllScopes(nil)
+	if err != nil {
+		return fmt.Errorf("failed to get scopes: %w", err)
+	}
+
+	scopeExists := false
+	for _, scope := range scopes {
+		if scope.Name == scopeName {
+			scopeExists = true
+			break
+		}
+	}
+
+	// Create scope if it doesn't exist
+	if !scopeExists {
+		log.Printf("Creating scope '%s' in bucket '%s'", scopeName, bucketName)
+		err := bucketMgr.CreateScope(scopeName, nil)
+		if err != nil {
+			// Scope might already exist (race condition), check error
+			if !isScopeExistsError(err) {
+				return fmt.Errorf("failed to create scope: %w", err)
+			}
+			log.Printf("Scope '%s' already exists", scopeName)
+		} else {
+			log.Printf("Successfully created scope '%s'", scopeName)
+		}
+	} else {
+		log.Printf("Scope '%s' already exists", scopeName)
+	}
+
+	// Check if collection exists
+	collections, err := bucketMgr.GetAllScopes(nil)
+	if err != nil {
+		return fmt.Errorf("failed to get collections: %w", err)
+	}
+
+	collectionExists := false
+	for _, s := range collections {
+		if s.Name == scopeName {
+			for _, col := range s.Collections {
+				if col.Name == collectionName {
+					collectionExists = true
+					break
+				}
+			}
+		}
+		if collectionExists {
+			break
+		}
+	}
+
+	// Create collection if it doesn't exist
+	if !collectionExists {
+		log.Printf("Creating collection '%s' in scope '%s'", collectionName, scopeName)
+		collectionSpec := gocb.CollectionSpec{
+			Name:      collectionName,
+			ScopeName: scopeName,
+		}
+		err := bucketMgr.CreateCollection(collectionSpec, nil)
+		if err != nil {
+			// Collection might already exist (race condition), check error
+			if !isCollectionExistsError(err) {
+				return fmt.Errorf("failed to create collection: %w", err)
+			}
+			log.Printf("Collection '%s' already exists in scope '%s'", collectionName, scopeName)
+		} else {
+			log.Printf("Successfully created collection '%s' in scope '%s'", collectionName, scopeName)
+			// Wait a bit for collection to be ready
+			time.Sleep(1 * time.Second)
+		}
+	} else {
+		log.Printf("Collection '%s' already exists in scope '%s'", collectionName, scopeName)
+	}
+
+	// Verify we can access the collection
+	scope := bucket.Scope(scopeName)
+	collection := scope.Collection(collectionName)
+	_, err = collection.Exists("test-key", nil)
+	if err != nil {
+		// This is expected if the key doesn't exist, but it verifies the collection is accessible
+		log.Printf("Verified collection '%s' in scope '%s' is accessible", collectionName, scopeName)
+	}
+
+	return nil
+}
+
+// isScopeExistsError checks if the error indicates scope already exists
+func isScopeExistsError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return containsIgnoreCase(errStr, "already exists") ||
+		containsIgnoreCase(errStr, "ScopeAlreadyExists") ||
+		containsIgnoreCase(errStr, "scope with this name already exists")
+}
+
+// isCollectionExistsError checks if the error indicates collection already exists
+func isCollectionExistsError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return containsIgnoreCase(errStr, "already exists") ||
+		containsIgnoreCase(errStr, "CollectionAlreadyExists") ||
+		containsIgnoreCase(errStr, "collection with this name already exists")
+}
+
+// containsIgnoreCase checks if a string contains a substring (case-insensitive)
+func containsIgnoreCase(s, substr string) bool {
+	if len(s) < len(substr) {
+		return false
+	}
+	sLower := toLowerString(s)
+	substrLower := toLowerString(substr)
+	for i := 0; i <= len(sLower)-len(substrLower); i++ {
+		if sLower[i:i+len(substrLower)] == substrLower {
+			return true
+		}
+	}
+	return false
+}
+
+func toLowerString(s string) string {
+	result := make([]byte, len(s))
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= 'A' && c <= 'Z' {
+			result[i] = c + 32
+		} else {
+			result[i] = c
+		}
+	}
+	return string(result)
 }
 
 // GetBucket returns the Couchbase bucket instance
@@ -57,9 +224,30 @@ func GetBucket() *gocb.Bucket {
 	return bucket
 }
 
-// GetCollection returns a collection from the bucket
-func GetCollection(collectionName string) *gocb.Collection {
-	return bucket.DefaultCollection()
+// GetScope returns the user scope
+func GetScope() *gocb.Scope {
+	return bucket.Scope(scopeName)
+}
+
+// GetCollection returns the users collection from the user scope
+func GetCollection(name string) *gocb.Collection {
+	scope := bucket.Scope(scopeName)
+	return scope.Collection(collectionName)
+}
+
+// GetBucketName returns the bucket name
+func GetBucketName() string {
+	return bucketName
+}
+
+// GetScopeName returns the scope name
+func GetScopeName() string {
+	return scopeName
+}
+
+// GetCollectionName returns the collection name
+func GetCollectionName() string {
+	return collectionName
 }
 
 // Close closes the Couchbase connection

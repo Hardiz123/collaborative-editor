@@ -48,6 +48,34 @@ func (h *UserHandler) Signup(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusCreated, response)
 }
 
+// Login handles user authentication
+func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != http.MethodPost {
+		respondWithError(w, errors.NewAppError(
+			http.StatusMethodNotAllowed,
+			"Method not allowed",
+			nil,
+		))
+		return
+	}
+
+	var req services.LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, errors.WrapError(errors.ErrInvalidInput, err))
+		return
+	}
+
+	// Call service
+	response, err := h.userService.Login(r.Context(), &req)
+	if err != nil {
+		respondWithError(w, err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, response)
+}
+
 // respondWithJSON sends a JSON response
 func respondWithJSON(w http.ResponseWriter, statusCode int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")

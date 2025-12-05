@@ -10,6 +10,7 @@ import (
 func SetupRoutes(userHandler *handlers.UserHandler) {
 	// User routes
 	http.HandleFunc("/signup", userHandler.Signup)
+	http.HandleFunc("/login", userHandler.Login)
 
 	// Health check
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

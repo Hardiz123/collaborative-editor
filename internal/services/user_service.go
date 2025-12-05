@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"collaborative-editor/internal/errors"
@@ -40,6 +41,21 @@ type SignupResponse struct {
 	CreatedAt string `json:"created_at"`
 }
 
+// LoginRequest represents a user login request
+type LoginRequest struct {
+	Email    string `json:"email"` // Can be email or username
+	Password string `json:"password"`
+}
+
+// LoginResponse represents a user login response
+type LoginResponse struct {
+	ID        string `json:"id"`
+	Username  string `json:"username"`
+	Email     string `json:"email"`
+	CreatedAt string `json:"created_at"`
+	Message   string `json:"message"`
+}
+
 // Signup creates a new user account
 func (s *UserService) Signup(ctx context.Context, req *SignupRequest) (*SignupResponse, error) {
 	// Normalize input
@@ -72,16 +88,18 @@ func (s *UserService) Signup(ctx context.Context, req *SignupRequest) (*SignupRe
 		)
 	}
 
-	// Hash the password
+	// Hash the password using bcrypt
+	// bcrypt automatically generates a salt and includes it in the hash
+	// DefaultCost is 10, which is a good balance between security and performance
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, errors.WrapError(errors.ErrInternalServer, fmt.Errorf("failed to hash password: %w", err))
 	}
 
-	// Create user
+	// Create user with hashed password
 	newUser := user.NewUser(req.Username, req.Email, string(hashedPassword))
 
-	// Store user in database
+	// Store user in database (password hash is stored, never the plain password)
 	if err := s.userRepo.Create(ctx, newUser); err != nil {
 		return nil, errors.WrapError(errors.ErrInternalServer, fmt.Errorf("failed to create user: %w", err))
 	}
@@ -92,6 +110,66 @@ func (s *UserService) Signup(ctx context.Context, req *SignupRequest) (*SignupRe
 		Username:  newUser.Username,
 		Email:     newUser.Email,
 		CreatedAt: newUser.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}, nil
+}
+
+// Login authenticates a user with email/username and password
+func (s *UserService) Login(ctx context.Context, req *LoginRequest) (*LoginResponse, error) {
+	// Normalize input
+	log.Println("Login request received")
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+	req.Password = strings.TrimSpace(req.Password)
+
+	// Validate input
+	if req.Email == "" {
+		return nil, errors.NewAppError(
+			errors.ErrInvalidInput.Code,
+			"Email is required",
+			nil,
+		)
+	}
+	if req.Password == "" {
+		return nil, errors.NewAppError(
+			errors.ErrInvalidInput.Code,
+			"Password is required",
+			nil,
+		)
+	}
+
+	// Try to find user by email first
+	u, err := s.userRepo.GetByEmail(ctx, req.Email)
+	if err != nil {
+		// If not found by email, try username
+		u, err = s.userRepo.GetByUsername(ctx, req.Email)
+		if err != nil {
+			// User not found - return unauthorized (don't reveal if email/username exists)
+			return nil, errors.NewAppError(
+				errors.ErrUnauthorized.Code,
+				"Invalid email/username or password",
+				nil,
+			)
+		}
+	}
+
+	// Compare the provided password with the stored hash
+	// bcrypt.CompareHashAndPassword handles the comparison securely
+	err = bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.Password))
+	if err != nil {
+		// Password doesn't match
+		return nil, errors.NewAppError(
+			errors.ErrUnauthorized.Code,
+			"Invalid email/username or password",
+			nil,
+		)
+	}
+
+	// Password matches - login successful
+	return &LoginResponse{
+		ID:        u.ID,
+		Username:  u.Username,
+		Email:     u.Email,
+		CreatedAt: u.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		Message:   "Login successful",
 	}, nil
 }
 

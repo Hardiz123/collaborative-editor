@@ -20,12 +20,16 @@ func NewCouchbaseUserRepository() *CouchbaseUserRepository {
 }
 
 // Create stores a new user in Couchbase
+// Uses UserDocument to ensure PasswordHash is stored in the database
 func (r *CouchbaseUserRepository) Create(ctx context.Context, u *user.User) error {
 	collection := db.GetCollection("users")
 
 	documentID := fmt.Sprintf("user:%s", u.ID)
 
-	_, err := collection.Insert(documentID, u, &gocb.InsertOptions{
+	// Convert to UserDocument to ensure PasswordHash is included in storage
+	doc := u.ToDocument()
+
+	_, err := collection.Insert(documentID, doc, &gocb.InsertOptions{
 		Context: ctx,
 	})
 	if err != nil {
@@ -41,7 +45,8 @@ func (r *CouchbaseUserRepository) GetByID(ctx context.Context, userID string) (*
 
 	documentID := fmt.Sprintf("user:%s", userID)
 
-	var u user.User
+	// Use UserDocument to retrieve password_hash from database
+	var doc user.UserDocument
 	getResult, err := collection.Get(documentID, &gocb.GetOptions{
 		Context: ctx,
 	})
@@ -52,23 +57,25 @@ func (r *CouchbaseUserRepository) GetByID(ctx context.Context, userID string) (*
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	if err := getResult.Content(&u); err != nil {
+	if err := getResult.Content(&doc); err != nil {
 		return nil, fmt.Errorf("failed to decode user: %w", err)
 	}
 
-	return &u, nil
+	// Convert UserDocument back to User
+	return user.FromDocument(&doc), nil
 }
 
 // GetByEmail retrieves a user by their email
 func (r *CouchbaseUserRepository) GetByEmail(ctx context.Context, email string) (*user.User, error) {
-	collection := db.GetCollection("users")
-
 	query := fmt.Sprintf(
-		"SELECT META().id, u.* FROM `%s` u WHERE u.email = $1 LIMIT 1",
-		collection.Bucket().Name(),
+		"SELECT META().id, u.* FROM `%s`.`%s`.`%s` u WHERE u.email = $1 LIMIT 1",
+		db.GetBucketName(),
+		db.GetScopeName(),
+		db.GetCollectionName(),
 	)
 
-	queryResult, err := collection.Bucket().Scope("_default").Query(
+	scope := db.GetScope()
+	queryResult, err := scope.Query(
 		query,
 		&gocb.QueryOptions{
 			PositionalParameters: []interface{}{email},
@@ -81,8 +88,8 @@ func (r *CouchbaseUserRepository) GetByEmail(ctx context.Context, email string) 
 	defer queryResult.Close()
 
 	var result struct {
-		ID   string     `json:"id"`
-		User *user.User `json:"u"`
+		ID   string              `json:"id"`
+		User *user.UserDocument `json:"u"`
 	}
 
 	if queryResult.Next() {
@@ -90,7 +97,8 @@ func (r *CouchbaseUserRepository) GetByEmail(ctx context.Context, email string) 
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse query result: %w", err)
 		}
-		return result.User, nil
+		// Convert UserDocument to User
+		return user.FromDocument(result.User), nil
 	}
 
 	return nil, fmt.Errorf("user not found")
@@ -98,14 +106,15 @@ func (r *CouchbaseUserRepository) GetByEmail(ctx context.Context, email string) 
 
 // GetByUsername retrieves a user by their username
 func (r *CouchbaseUserRepository) GetByUsername(ctx context.Context, username string) (*user.User, error) {
-	collection := db.GetCollection("users")
-
 	query := fmt.Sprintf(
-		"SELECT META().id, u.* FROM `%s` u WHERE u.username = $1 LIMIT 1",
-		collection.Bucket().Name(),
+		"SELECT META().id, u.* FROM `%s`.`%s`.`%s` u WHERE u.username = $1 LIMIT 1",
+		db.GetBucketName(),
+		db.GetScopeName(),
+		db.GetCollectionName(),
 	)
 
-	queryResult, err := collection.Bucket().Scope("_default").Query(
+	scope := db.GetScope()
+	queryResult, err := scope.Query(
 		query,
 		&gocb.QueryOptions{
 			PositionalParameters: []interface{}{username},
@@ -118,8 +127,8 @@ func (r *CouchbaseUserRepository) GetByUsername(ctx context.Context, username st
 	defer queryResult.Close()
 
 	var result struct {
-		ID   string     `json:"id"`
-		User *user.User `json:"u"`
+		ID   string              `json:"id"`
+		User *user.UserDocument `json:"u"`
 	}
 
 	if queryResult.Next() {
@@ -127,7 +136,8 @@ func (r *CouchbaseUserRepository) GetByUsername(ctx context.Context, username st
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse query result: %w", err)
 		}
-		return result.User, nil
+		// Convert UserDocument to User
+		return user.FromDocument(result.User), nil
 	}
 
 	return nil, fmt.Errorf("user not found")
@@ -139,7 +149,10 @@ func (r *CouchbaseUserRepository) Update(ctx context.Context, u *user.User) erro
 
 	documentID := fmt.Sprintf("user:%s", u.ID)
 
-	_, err := collection.Replace(documentID, u, &gocb.ReplaceOptions{
+	// Convert to UserDocument to ensure PasswordHash is included in storage
+	doc := u.ToDocument()
+
+	_, err := collection.Replace(documentID, doc, &gocb.ReplaceOptions{
 		Context: ctx,
 	})
 	if err != nil {

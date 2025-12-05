@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"collaborative-editor/internal/errors"
+	"collaborative-editor/internal/middleware"
 	"collaborative-editor/internal/services"
 )
 
@@ -98,5 +99,31 @@ func respondWithError(w http.ResponseWriter, err error) {
 	w.WriteHeader(appErr.Code)
 	json.NewEncoder(w).Encode(map[string]string{
 		"error": appErr.Message,
+	})
+}
+
+// GetUserHandler handles requests to get user information
+func (h *UserHandler) GetUserHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondWithError(w, errors.NewAppError(
+			http.StatusMethodNotAllowed,
+			"Method not allowed",
+			nil,
+		))
+		return
+	}
+
+	user, err := h.userService.GetUser(r.Context(), middleware.GetUserID(r.Context()))
+	if err != nil {
+		respondWithError(w, err)
+		return
+	}
+
+	log.Println("User ID: ", user)
+
+	respondWithJSON(w, http.StatusOK, map[string]string{
+		"userID":   user.ID,
+		"username": user.Username,
+		"email":    user.Email,
 	})
 }

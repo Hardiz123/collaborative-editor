@@ -15,6 +15,7 @@ func SetupRoutes(userHandler *handlers.UserHandler) {
 
 	// Protected routes (require JWT authentication)
 	http.Handle("/protected", middleware.AuthMiddleware(http.HandlerFunc(handlers.ProtectedHandler)))
+	http.Handle("/getUser", middleware.AuthMiddleware(http.HandlerFunc(userHandler.GetUserHandler)))
 
 	// Health check
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

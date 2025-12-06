@@ -60,8 +60,12 @@ func GenerateToken(userID, username, email string) (string, error) {
 	return tokenString, nil
 }
 
+// TokenBlacklistChecker is a function type that checks if a token is blacklisted
+type TokenBlacklistChecker func(token string) (bool, error)
+
 // ValidateToken validates a JWT token and returns the claims
-func ValidateToken(tokenString string) (*Claims, error) {
+// If blacklistChecker is provided, it will check if the token is blacklisted
+func ValidateToken(tokenString string, blacklistChecker ...TokenBlacklistChecker) (*Claims, error) {
 	claims := &Claims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
@@ -78,6 +82,17 @@ func ValidateToken(tokenString string) (*Claims, error) {
 
 	if !token.Valid {
 		return nil, errors.New("invalid token")
+	}
+
+	// Check blacklist if checker is provided
+	if len(blacklistChecker) > 0 && blacklistChecker[0] != nil {
+		isBlacklisted, err := blacklistChecker[0](tokenString)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check token blacklist: %w", err)
+		}
+		if isBlacklisted {
+			return nil, errors.New("token has been blacklisted")
+		}
 	}
 
 	return claims, nil

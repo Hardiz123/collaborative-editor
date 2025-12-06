@@ -7,6 +7,7 @@ import (
 	"collaborative-editor/internal/auth"
 	"collaborative-editor/internal/db"
 	"collaborative-editor/internal/handlers"
+	"collaborative-editor/internal/middleware"
 	"collaborative-editor/internal/repository"
 	"collaborative-editor/internal/routes"
 	"collaborative-editor/internal/services"
@@ -34,10 +35,14 @@ func main() {
 	// Initialize repository layer
 	userRepo := repository.NewCouchbaseUserRepository()
 	textRepo := repository.NewCouchbaseTextRepository()
+	blacklistRepo := repository.NewCouchbaseTokenBlacklistRepository()
 
 	// Initialize service layer
-	userService := services.NewUserService(userRepo)
+	userService := services.NewUserService(userRepo, blacklistRepo)
 	textService := services.NewTextService(textRepo)
+
+	// Set blacklist repository in middleware for token validation
+	middleware.SetBlacklistRepository(blacklistRepo)
 
 	// Initialize handlers
 	userHandler := handlers.NewUserHandler(userService)

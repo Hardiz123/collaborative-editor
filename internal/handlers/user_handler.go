@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"collaborative-editor/internal/errors"
 	"collaborative-editor/internal/middleware"
@@ -126,4 +127,61 @@ func (h *UserHandler) GetUserHandler(w http.ResponseWriter, r *http.Request) {
 		"username": user.Username,
 		"email":    user.Email,
 	})
+}
+
+// LogoutHandler handles user logout
+// This endpoint requires authentication (protected by AuthMiddleware)
+func (h *UserHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondWithError(w, errors.NewAppError(
+			http.StatusMethodNotAllowed,
+			"Method not allowed",
+			nil,
+		))
+		return
+	}
+
+	// Get user ID from context (set by AuthMiddleware)
+	userID := middleware.GetUserID(r.Context())
+	if userID == "" {
+		respondWithError(w, errors.NewAppError(
+			http.StatusUnauthorized,
+			"User not authenticated",
+			nil,
+		))
+		return
+	}
+
+	// Extract token from Authorization header
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		respondWithError(w, errors.NewAppError(
+			http.StatusUnauthorized,
+			"Authorization header is required",
+			nil,
+		))
+		return
+	}
+
+	// Extract token from "Bearer <token>" format
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		respondWithError(w, errors.NewAppError(
+			http.StatusUnauthorized,
+			"Authorization header must be in format: Bearer <token>",
+			nil,
+		))
+		return
+	}
+
+	token := parts[1]
+
+	// Call service to handle logout (this will blacklist the token)
+	response, err := h.userService.Logout(r.Context(), userID, token)
+	if err != nil {
+		respondWithError(w, err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, response)
 }

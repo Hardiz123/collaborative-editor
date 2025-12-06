@@ -8,6 +8,7 @@ import (
 
 	"collaborative-editor/internal/auth"
 	"collaborative-editor/internal/errors"
+	"collaborative-editor/internal/repository"
 )
 
 type contextKey string
@@ -17,6 +18,13 @@ const (
 	usernameKey contextKey = "username"
 	emailKey    contextKey = "email"
 )
+
+var blacklistRepo repository.TokenBlacklistRepository
+
+// SetBlacklistRepository sets the token blacklist repository for the middleware
+func SetBlacklistRepository(repo repository.TokenBlacklistRepository) {
+	blacklistRepo = repo
+}
 
 // AuthMiddleware validates JWT tokens for protected routes
 func AuthMiddleware(next http.Handler) http.Handler {
@@ -45,8 +53,16 @@ func AuthMiddleware(next http.Handler) http.Handler {
 
 		tokenString := parts[1]
 
-		// Validate token
-		claims, err := auth.ValidateToken(tokenString)
+		// Create blacklist checker if repository is available
+		var blacklistChecker auth.TokenBlacklistChecker
+		if blacklistRepo != nil {
+			blacklistChecker = func(token string) (bool, error) {
+				return blacklistRepo.IsTokenBlacklisted(r.Context(), token)
+			}
+		}
+
+		// Validate token with blacklist check
+		claims, err := auth.ValidateToken(tokenString, blacklistChecker)
 		if err != nil {
 			respondWithError(w, errors.NewAppError(
 				errors.ErrUnauthorized.Code,

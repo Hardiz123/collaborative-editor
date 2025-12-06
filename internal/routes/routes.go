@@ -37,6 +37,7 @@ func setupProtectedRoutes(userHandler *handlers.UserHandler, textHandler *handle
 	// User routes
 	http.Handle("/getUser", middleware.AuthMiddleware(http.HandlerFunc(userHandler.GetUserHandler)))
 	http.Handle("/protected", middleware.AuthMiddleware(http.HandlerFunc(handlers.ProtectedHandler)))
+	http.Handle("/logout", middleware.AuthMiddleware(http.HandlerFunc(userHandler.LogoutHandler)))
 
 	// Text routes
 	http.Handle("/saveText", middleware.AuthMiddleware(http.HandlerFunc(textHandler.SaveText)))

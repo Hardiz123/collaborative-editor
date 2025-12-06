@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"collaborative-editor/internal/auth"
 	"collaborative-editor/internal/errors"
@@ -17,13 +18,15 @@ import (
 
 // UserService handles user-related business logic
 type UserService struct {
-	userRepo repository.UserRepository
+	userRepo      repository.UserRepository
+	blacklistRepo repository.TokenBlacklistRepository
 }
 
 // NewUserService creates a new user service
-func NewUserService(userRepo repository.UserRepository) *UserService {
+func NewUserService(userRepo repository.UserRepository, blacklistRepo repository.TokenBlacklistRepository) *UserService {
 	return &UserService{
-		userRepo: userRepo,
+		userRepo:      userRepo,
+		blacklistRepo: blacklistRepo,
 	}
 }
 
@@ -195,4 +198,47 @@ func (s *UserService) GetUser(ctx context.Context, userID string) (*user.User, e
 	// Remove sensitive data
 	u.PasswordHash = ""
 	return u, nil
+}
+
+// LogoutResponse represents a user logout response
+type LogoutResponse struct {
+	Message string `json:"message"`
+}
+
+// Logout handles user logout and blacklists the token
+func (s *UserService) Logout(ctx context.Context, userID string, token string) (*LogoutResponse, error) {
+	// Verify user exists (optional but good for validation)
+	_, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, errors.ErrNotFound
+		}
+		return nil, errors.WrapError(errors.ErrInternalServer, err)
+	}
+
+	// Validate token to get expiration time
+	claims, err := auth.ValidateToken(token)
+	if err != nil {
+		return nil, errors.WrapError(errors.ErrUnauthorized, fmt.Errorf("invalid token: %w", err))
+	}
+
+	// Get expiration time from claims
+	var expiresAt time.Time
+	if claims.ExpiresAt != nil {
+		expiresAt = claims.ExpiresAt.Time
+	} else {
+		// Default to 24 hours from now if expiration not set
+		expiresAt = time.Now().Add(24 * time.Hour)
+	}
+
+	// Add token to blacklist
+	if s.blacklistRepo != nil {
+		if err := s.blacklistRepo.AddToken(ctx, token, expiresAt); err != nil {
+			return nil, errors.WrapError(errors.ErrInternalServer, fmt.Errorf("failed to blacklist token: %w", err))
+		}
+	}
+
+	return &LogoutResponse{
+		Message: "Logout successful",
+	}, nil
 }

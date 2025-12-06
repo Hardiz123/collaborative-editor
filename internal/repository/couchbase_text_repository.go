@@ -21,7 +21,7 @@ func NewCouchbaseTextRepository() *CouchbaseTextRepository {
 
 // Save stores or updates a text document in Couchbase
 func (r *CouchbaseTextRepository) Save(ctx context.Context, t *text.Text) error {
-	collection := db.GetCollection("users")
+	collection := db.GetTextsCollection()
 
 	documentID := fmt.Sprintf("text:%s", t.ID)
 
@@ -41,7 +41,7 @@ func (r *CouchbaseTextRepository) Save(ctx context.Context, t *text.Text) error 
 
 // GetByID retrieves a text document by its ID
 func (r *CouchbaseTextRepository) GetByID(ctx context.Context, textID string) (*text.Text, error) {
-	collection := db.GetCollection("users")
+	collection := db.GetTextsCollection()
 
 	documentID := fmt.Sprintf("text:%s", textID)
 
@@ -67,13 +67,11 @@ func (r *CouchbaseTextRepository) GetByID(ctx context.Context, textID string) (*
 // GetByUserID retrieves a text document by user ID
 func (r *CouchbaseTextRepository) GetByUserID(ctx context.Context, userID string) (*text.Text, error) {
 	query := fmt.Sprintf(
-		"SELECT META().id as id, t.* FROM `%s`.`%s`.`%s` t WHERE t.user_id = $1 AND META().id LIKE 'text:%%' LIMIT 1",
+		"SELECT t.* FROM `%s`.`texts`.`texts` t WHERE t.user_id = $1 LIMIT 1",
 		db.GetBucketName(),
-		db.GetScopeName(),
-		db.GetCollectionName(),
 	)
 
-	scope := db.GetScope()
+	scope := db.GetTextsScope()
 	queryResult, err := scope.Query(
 		query,
 		&gocb.QueryOptions{
@@ -102,4 +100,3 @@ func (r *CouchbaseTextRepository) GetByUserID(ctx context.Context, userID string
 
 	return nil, fmt.Errorf("text not found")
 }
-

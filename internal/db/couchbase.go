@@ -68,9 +68,19 @@ func Connect() error {
 		return fmt.Errorf("failed to wait for bucket ready: %w", err)
 	}
 
-	// Ensure scope and collection exist
-	if err := ensureScopeAndCollection(); err != nil {
-		return fmt.Errorf("failed to setup scope and collection: %w", err)
+	// Ensure user scope and collection exist
+	if err := ensureScopeAndCollection(scopeName, collectionName); err != nil {
+		return fmt.Errorf("failed to setup user scope and collection: %w", err)
+	}
+
+	// Ensure texts scope and collection exist
+	if err := ensureScopeAndCollection("texts", "texts"); err != nil {
+		return fmt.Errorf("failed to setup texts scope and collection: %w", err)
+	}
+
+	// Ensure blacklist scope and collection exist
+	if err := ensureScopeAndCollection("blacklist", "tokens"); err != nil {
+		return fmt.Errorf("failed to setup blacklist scope and collection: %w", err)
 	}
 
 	log.Printf("Successfully connected to Couchbase bucket: %s", bucketName)
@@ -78,7 +88,7 @@ func Connect() error {
 }
 
 // ensureScopeAndCollection checks if the scope exists, creates it if not, and ensures the collection exists
-func ensureScopeAndCollection() error {
+func ensureScopeAndCollection(scopeNameToCheck, collectionNameToCheck string) error {
 	// Get bucket manager to manage scopes and collections
 	bucketMgr := bucket.Collections()
 
@@ -90,7 +100,7 @@ func ensureScopeAndCollection() error {
 
 	scopeExists := false
 	for _, scope := range scopes {
-		if scope.Name == scopeName {
+		if scope.Name == scopeNameToCheck {
 			scopeExists = true
 			break
 		}
@@ -98,19 +108,19 @@ func ensureScopeAndCollection() error {
 
 	// Create scope if it doesn't exist
 	if !scopeExists {
-		log.Printf("Creating scope '%s' in bucket '%s'", scopeName, bucketName)
-		err := bucketMgr.CreateScope(scopeName, nil)
+		log.Printf("Creating scope '%s' in bucket '%s'", scopeNameToCheck, bucketName)
+		err := bucketMgr.CreateScope(scopeNameToCheck, nil)
 		if err != nil {
 			// Scope might already exist (race condition), check error
 			if !isScopeExistsError(err) {
 				return fmt.Errorf("failed to create scope: %w", err)
 			}
-			log.Printf("Scope '%s' already exists", scopeName)
+			log.Printf("Scope '%s' already exists", scopeNameToCheck)
 		} else {
-			log.Printf("Successfully created scope '%s'", scopeName)
+			log.Printf("Successfully created scope '%s'", scopeNameToCheck)
 		}
 	} else {
-		log.Printf("Scope '%s' already exists", scopeName)
+		log.Printf("Scope '%s' already exists", scopeNameToCheck)
 	}
 
 	// Check if collection exists
@@ -121,9 +131,9 @@ func ensureScopeAndCollection() error {
 
 	collectionExists := false
 	for _, s := range collections {
-		if s.Name == scopeName {
+		if s.Name == scopeNameToCheck {
 			for _, col := range s.Collections {
-				if col.Name == collectionName {
+				if col.Name == collectionNameToCheck {
 					collectionExists = true
 					break
 				}
@@ -136,10 +146,10 @@ func ensureScopeAndCollection() error {
 
 	// Create collection if it doesn't exist
 	if !collectionExists {
-		log.Printf("Creating collection '%s' in scope '%s'", collectionName, scopeName)
+		log.Printf("Creating collection '%s' in scope '%s'", collectionNameToCheck, scopeNameToCheck)
 		collectionSpec := gocb.CollectionSpec{
-			Name:      collectionName,
-			ScopeName: scopeName,
+			Name:      collectionNameToCheck,
+			ScopeName: scopeNameToCheck,
 		}
 		err := bucketMgr.CreateCollection(collectionSpec, nil)
 		if err != nil {
@@ -147,23 +157,23 @@ func ensureScopeAndCollection() error {
 			if !isCollectionExistsError(err) {
 				return fmt.Errorf("failed to create collection: %w", err)
 			}
-			log.Printf("Collection '%s' already exists in scope '%s'", collectionName, scopeName)
+			log.Printf("Collection '%s' already exists in scope '%s'", collectionNameToCheck, scopeNameToCheck)
 		} else {
-			log.Printf("Successfully created collection '%s' in scope '%s'", collectionName, scopeName)
+			log.Printf("Successfully created collection '%s' in scope '%s'", collectionNameToCheck, scopeNameToCheck)
 			// Wait a bit for collection to be ready
 			time.Sleep(1 * time.Second)
 		}
 	} else {
-		log.Printf("Collection '%s' already exists in scope '%s'", collectionName, scopeName)
+		log.Printf("Collection '%s' already exists in scope '%s'", collectionNameToCheck, scopeNameToCheck)
 	}
 
 	// Verify we can access the collection
-	scope := bucket.Scope(scopeName)
-	collection := scope.Collection(collectionName)
+	scope := bucket.Scope(scopeNameToCheck)
+	collection := scope.Collection(collectionNameToCheck)
 	_, err = collection.Exists("test-key", nil)
 	if err != nil {
 		// This is expected if the key doesn't exist, but it verifies the collection is accessible
-		log.Printf("Verified collection '%s' in scope '%s' is accessible", collectionName, scopeName)
+		log.Printf("Verified collection '%s' in scope '%s' is accessible", collectionNameToCheck, scopeNameToCheck)
 	}
 
 	return nil
@@ -229,10 +239,32 @@ func GetScope() *gocb.Scope {
 	return bucket.Scope(scopeName)
 }
 
+// GetTextsScope returns the texts scope
+func GetTextsScope() *gocb.Scope {
+	return bucket.Scope("texts")
+}
+
 // GetCollection returns the users collection from the user scope
 func GetCollection(name string) *gocb.Collection {
 	scope := bucket.Scope(scopeName)
 	return scope.Collection(collectionName)
+}
+
+// GetTextsCollection returns the texts collection from the texts scope
+func GetTextsCollection() *gocb.Collection {
+	scope := bucket.Scope("texts")
+	return scope.Collection("texts")
+}
+
+// GetBlacklistScope returns the blacklist scope
+func GetBlacklistScope() *gocb.Scope {
+	return bucket.Scope("blacklist")
+}
+
+// GetBlacklistCollection returns the tokens collection from the blacklist scope
+func GetBlacklistCollection() *gocb.Collection {
+	scope := bucket.Scope("blacklist")
+	return scope.Collection("tokens")
 }
 
 // GetBucketName returns the bucket name

@@ -3,6 +3,9 @@ FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
+# Enable toolchain downloads (Go will automatically download 1.24.11 as specified in go.mod)
+ENV GOTOOLCHAIN=auto
+
 # Copy go mod files
 COPY go.mod go.sum ./
 RUN go mod download

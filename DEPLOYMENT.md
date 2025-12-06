@@ -196,8 +196,10 @@ VITE_YJS_WS_URL=wss://your-yjs-server.up.railway.app
   1. Go to Railway project → Settings → Build
   2. Change Builder from "Nixpacks" to "Dockerfile"
   3. Redeploy
+- **Go version mismatch**: If you see "requires go >= 1.24.0" errors:
+  - The Dockerfile uses Go 1.23 with `GOTOOLCHAIN=auto` to download Go 1.24 automatically
+  - If that fails, you may need to downgrade go.mod to 1.23 (change `go 1.24.0` to `go 1.23` in go.mod)
 - Ensure all dependencies are in go.mod
-- Check that Go version in Dockerfile matches your go.mod (currently 1.23)
 - Verify environment variables are set correctly
 
 **Cloudflare Pages:**

@@ -6,7 +6,6 @@ import Placeholder from '@tiptap/extension-placeholder';
 import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
 import Collaboration from '@tiptap/extension-collaboration';
-import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 import EditorToolbar from './EditorToolbar';
 import { useEffect } from 'react';
 import * as Y from 'yjs';
@@ -19,13 +18,16 @@ interface TiptapEditorProps {
     editable?: boolean;
 }
 
-const TiptapEditor = ({ ydoc, provider, currentUser, editable = true }: TiptapEditorProps) => {
+const TiptapEditor = ({ ydoc, provider, editable = true }: TiptapEditorProps) => {
+
     const editor = useEditor({
+        enableContentCheck: true,
         extensions: [
             StarterKit.configure({
                 // Disable history extension as Yjs handles undo/redo
                 history: false,
             }),
+
             Image,
             Link.configure({
                 openOnClick: false,
@@ -37,15 +39,10 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true }: TiptapEd
                 types: ['heading', 'paragraph'],
             }),
             Underline,
-            // Yjs Collaboration
+            // Yjs Collaboration - real-time text sync
             Collaboration.configure({
                 document: ydoc,
             }),
-            // Collaborative cursors - only add if provider exists
-            ...(provider ? [CollaborationCursor.configure({
-                provider: provider,
-                user: currentUser,
-            })] : []),
         ],
         editable,
         editorProps: {

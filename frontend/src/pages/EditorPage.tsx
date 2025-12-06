@@ -33,6 +33,31 @@ const EditorPage = () => {
         enabled: !!id && !!document,
     });
 
+    // Parse JWT token once to get user info
+    const [tokenUser, setTokenUser] = useState<{ userID: string; username: string; email: string } | null>(null);
+
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            console.log('No token found');
+            return;
+        }
+
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            console.log('Parsed JWT payload:', payload);
+            const userData = {
+                userID: payload.user_id || payload.sub || '',
+                username: payload.username || '',
+                email: payload.email || '',
+            };
+            console.log('Extracted user data:', userData);
+            setTokenUser(userData);
+        } catch (error) {
+            console.error('Failed to parse token:', error);
+        }
+    }, []);
+
     // Yjs for real-time text editing
     const getUserColor = (userId: string) => {
         const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'];
@@ -40,14 +65,21 @@ const EditorPage = () => {
         return colors[hash % colors.length];
     };
 
-    const currentUser = useMemo(() => ({
-        name: user?.username || 'Anonymous',
-        color: getUserColor(user?.userID || 'anonymous'),
-    }), [user]);
+    const currentUser = useMemo(() => {
+        const userId = user?.userID || tokenUser?.userID || 'anonymous';
+        const username = user?.username || tokenUser?.username || 'Anonymous';
+
+        console.log('Creating currentUser:', { user, tokenUser, userId, username });
+
+        return {
+            name: username,
+            color: getUserColor(userId),
+        };
+    }, [user, tokenUser]);
 
     const { ydoc, provider, synced } = useYjsProvider({
         documentId: id!,
-        enabled: !!id && !!document,
+        enabled: !!id && !!document && !!tokenUser, // Wait for token to be parsed
         username: currentUser.name,
         userColor: currentUser.color,
     });
@@ -79,6 +111,16 @@ const EditorPage = () => {
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setTitle(e.target.value);
     };
+
+    // Debug logging
+    console.log('EditorPage state:', {
+        isLoading,
+        hasDocument: !!document,
+        hasUser: !!user,
+        userId: user?.userID,
+        username: user?.username,
+        provider: !!provider
+    });
 
     if (isLoading) {
         return (

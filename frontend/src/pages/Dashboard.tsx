@@ -37,6 +37,7 @@ const Dashboard = () => {
     const { data: documents, isLoading } = useQuery({
         queryKey: ['documents'],
         queryFn: getDocuments,
+        refetchInterval: 10000
     });
 
     // Create document mutation

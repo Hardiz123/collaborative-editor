@@ -31,9 +31,13 @@ export function useDocumentWebSocket({ documentId, enabled }: UseDocumentWebSock
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
+  const isMountedRef = useRef(true); // Track if component is mounted
 
   useEffect(() => {
     console.log('useDocumentWebSocket effect:', { enabled, documentId });
+    
+    // Reset mounted flag
+    isMountedRef.current = true;
     
     if (!enabled || !documentId) {
       console.log('WebSocket connection skipped:', { enabled, documentId });
@@ -41,6 +45,12 @@ export function useDocumentWebSocket({ documentId, enabled }: UseDocumentWebSock
     }
 
     const connect = () => {
+      // Don't connect if component is unmounted
+      if (!isMountedRef.current) {
+        console.log('Component unmounted, skipping connection');
+        return;
+      }
+
       const token = localStorage.getItem('token');
       if (!token) {
         console.error('No authentication token found');
@@ -63,14 +73,16 @@ export function useDocumentWebSocket({ documentId, enabled }: UseDocumentWebSock
         setIsConnected(false);
         wsRef.current = null;
 
-        // Attempt to reconnect with exponential backoff
-        if (enabled && reconnectAttemptsRef.current < 5) {
+        // Only reconnect if component is still mounted
+        if (isMountedRef.current && enabled && reconnectAttemptsRef.current < 5) {
           const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 10000);
           console.log(`Reconnecting in ${delay}ms...`);
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttemptsRef.current++;
             connect();
           }, delay);
+        } else {
+          console.log('Not reconnecting - component unmounted or disabled');
         }
       };
 
@@ -117,40 +129,41 @@ export function useDocumentWebSocket({ documentId, enabled }: UseDocumentWebSock
 
     // Cleanup on unmount
     return () => {
+      console.log('useDocumentWebSocket cleanup - stopping reconnection');
+      
+      // Mark component as unmounted to prevent reconnection
+      isMountedRef.current = false;
+      
+      // Clear any pending reconnection attempts
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
+      
+      // Reset reconnection attempts
+      reconnectAttemptsRef.current = 999;
+      
+      // Close WebSocket connection
       if (wsRef.current) {
         wsRef.current.close();
+        wsRef.current = null;
       }
+      
+      // Clear collaborators
+      setCollaborators([]);
+      setIsConnected(false);
     };
-  }, [documentId, enabled]); // Removed user from dependencies
+  }, [documentId, enabled]);
 
-  // Add current user to collaborators list
+  // Mark current user in collaborators list (from server JOIN messages)
   const allCollaborators = useMemo(() => {
     if (!user) return collaborators;
 
-    // Check if current user is already in the list
-    const currentUserCollaborator = collaborators.find((c) => c.userId === user.userID);
-    
-    if (currentUserCollaborator) {
-      // Mark current user
-      return collaborators.map((c) => ({
-        ...c,
-        isCurrentUser: c.userId === user.userID,
-      }));
-    }
-
-    // Add current user at the beginning if not in list
-    return [
-      {
-        userId: user.userID,
-        username: user.username,
-        email: user.email,
-        isCurrentUser: true,
-      },
-      ...collaborators,
-    ];
+    // Just mark which one is the current user
+    return collaborators.map((c) => ({
+      ...c,
+      isCurrentUser: c.userId === user.userID,
+    }));
   }, [collaborators, user]);
 
   return { collaborators: allCollaborators, isConnected };

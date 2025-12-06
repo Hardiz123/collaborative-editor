@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import TiptapEditor from '@/components/editor/TiptapEditor';
 import { motion } from 'framer-motion';
-import { useQuery } from '@tanstack/react-query';
-import { getDocument } from '@/services/documents';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { getDocument, updateDocument } from '@/services/documents';
 import { CollaboratorModal } from '@/components/ui/collaborator-modal';
 import { CollaboratorAvatars } from '@/components/CollaboratorAvatars';
 import { useDocumentWebSocket } from '@/hooks/useDocumentWebSocket';
@@ -59,9 +59,25 @@ const EditorPage = () => {
         }
     }, [document]);
 
+    // Title save mutation
+    const titleMutation = useMutation({
+        mutationFn: (newTitle: string) => updateDocument(id!, { title: newTitle, content: document?.content || '' }),
+    });
+
+    // Debounced title save
+    useEffect(() => {
+        if (!document || title === document.title) return;
+
+        const timer = setTimeout(() => {
+            console.log('Saving title:', title);
+            titleMutation.mutate(title);
+        }, 1000);
+
+        return () => clearTimeout(timer);
+    }, [title, document]);
+
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setTitle(e.target.value);
-        // TODO: Save title to backend
     };
 
     if (isLoading) {
@@ -97,7 +113,12 @@ const EditorPage = () => {
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="text-white/60 text-sm flex items-center gap-2">
-                        {synced ? (
+                        {titleMutation.isPending ? (
+                            <span className="flex items-center gap-2 animate-pulse">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                Saving title...
+                            </span>
+                        ) : synced ? (
                             <span className="text-green-400">✓ Synced</span>
                         ) : (
                             <span className="animate-pulse">Syncing...</span>

@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"collaborative-editor/internal/auth"
 	"collaborative-editor/internal/db"
@@ -61,8 +62,13 @@ func main() {
 	// Setup routes
 	routes.SetupRoutes(userHandler, textHandler, docHandler, wsHandler)
 
-	log.Println("Server starting at http://localhost:8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("Server starting at http://0.0.0.0:%s", port)
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }

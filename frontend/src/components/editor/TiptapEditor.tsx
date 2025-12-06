@@ -138,55 +138,112 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentC
         }
     }, [editor, provider, initialContent]);
 
-    // Debug: Check if collaboration caret elements exist
+    // Set --caret-color CSS variable on collaboration caret elements for each user
     useEffect(() => {
         if (!editor || !provider) return;
 
-        const checkCaretElements = () => {
-            const carets = document.querySelectorAll('.collaboration-carets, .collaboration-caret, .collaboration-cursor__caret');
-            const labels = document.querySelectorAll('.collaboration-carets__label, .collaboration-caret__label, .collaboration-cursor__label');
-            console.log('Collaboration carets found:', carets.length);
-            console.log('Collaboration labels found:', labels.length);
+        const updateCaretColors = () => {
+            // Check if editor view is available
+            if (!editor.view) return;
+
+            // Get all awareness states (all connected users)
+            const awarenessStates = provider.awareness.getStates();
             
-            if (carets.length > 0) {
-                carets.forEach((caret, idx) => {
-                    const styles = window.getComputedStyle(caret);
-                    console.log(`Caret ${idx}:`, {
-                        borderLeft: styles.borderLeft,
-                        backgroundColor: styles.backgroundColor,
-                        width: styles.width,
-                        display: styles.display,
-                    });
-                });
-            }
+            // Find all label elements (we'll find carets through labels)
+            const allLabels = document.querySelectorAll('.collaboration-carets__label, .collaboration-caret__label, .collaboration-cursor__label');
             
-            if (labels.length > 0) {
-                labels.forEach((label, idx) => {
-                    const styles = window.getComputedStyle(label);
-                    console.log(`Label ${idx}:`, {
-                        backgroundColor: styles.backgroundColor,
-                        display: styles.display,
-                        opacity: styles.opacity,
-                        visibility: styles.visibility,
-                        zIndex: styles.zIndex,
-                    });
+            // For each user, find their caret and set the color
+            awarenessStates.forEach((state) => {
+                const user = state.user;
+                if (!user || !user.color) return;
+
+                // Match carets to users by checking the label text content
+                allLabels.forEach((labelEl) => {
+                    const label = labelEl as HTMLElement;
+                    if (label.textContent === user.name) {
+                        // Find the associated caret element
+                        const caret = label.parentElement?.querySelector('.collaboration-carets, .collaboration-carets__caret, .collaboration-caret, .collaboration-cursor__caret') as HTMLElement;
+                        
+                        if (caret) {
+                            caret.style.setProperty('--caret-color', user.color);
+                        }
+                        
+                        // Set color on label
+                        label.style.setProperty('--caret-color', user.color);
+                        label.style.backgroundColor = user.color;
+                    }
                 });
-            }
+            });
         };
 
-        // Check after a delay to allow elements to render
-        const timer = setTimeout(checkCaretElements, 2000);
+        // Update colors when awareness changes
+        const handleAwarenessChange = () => {
+            setTimeout(updateCaretColors, 100);
+        };
+
+        provider.awareness.on('change', handleAwarenessChange);
+
+        // Initial update
+        const timer = setTimeout(updateCaretColors, 500);
         
-        // Also check when provider syncs
-        if (provider) {
-            provider.on('sync', (isSynced: boolean) => {
-                if (isSynced) {
-                    setTimeout(checkCaretElements, 500);
+        // Also update when provider syncs
+        provider.on('sync', (isSynced: boolean) => {
+            if (isSynced) {
+                setTimeout(updateCaretColors, 200);
+            }
+        });
+
+        // Use MutationObserver to watch for new caret elements
+        // Only set up observer if editor view is available
+        let observer: MutationObserver | null = null;
+        let viewCheckInterval: NodeJS.Timeout | null = null;
+        
+        const setupObserver = () => {
+            // Check if editor view is available before accessing dom
+            if (editor.view && 'dom' in editor.view && editor.view.dom) {
+                observer = new MutationObserver(() => {
+                    updateCaretColors();
+                });
+                observer.observe(editor.view.dom, {
+                    childList: true,
+                    subtree: true,
+                });
+                return true;
+            }
+            return false;
+        };
+
+        // Try to set up observer immediately
+        if (!setupObserver()) {
+            // Wait for view to be available
+            viewCheckInterval = setInterval(() => {
+                if (setupObserver()) {
+                    if (viewCheckInterval) {
+                        clearInterval(viewCheckInterval);
+                        viewCheckInterval = null;
+                    }
                 }
-            });
+            }, 100);
+            
+            // Cleanup interval after 5 seconds if view never becomes available
+            setTimeout(() => {
+                if (viewCheckInterval) {
+                    clearInterval(viewCheckInterval);
+                    viewCheckInterval = null;
+                }
+            }, 5000);
         }
 
-        return () => clearTimeout(timer);
+        return () => {
+            clearTimeout(timer);
+            provider.awareness.off('change', handleAwarenessChange);
+            if (observer) {
+                observer.disconnect();
+            }
+            if (viewCheckInterval) {
+                clearInterval(viewCheckInterval);
+            }
+        };
     }, [editor, provider]);
 
     // Listen to content changes and notify parent

@@ -57,10 +57,12 @@ export function useDocumentWebSocket({ documentId, enabled }: UseDocumentWebSock
         return;
       }
 
-      console.log('Attempting WebSocket connection to:', `ws://localhost:8080/ws/documents/${documentId}`);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      const wsUrl = apiUrl.replace(/^http/, 'ws') + `/ws/documents/${documentId}?token=${token}`;
+      console.log('Attempting WebSocket connection to:', wsUrl);
 
       // Create WebSocket connection
-      const ws = new WebSocket(`ws://localhost:8080/ws/documents/${documentId}?token=${token}`);
+      const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
         console.log('WebSocket connected');

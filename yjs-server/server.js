@@ -7,7 +7,7 @@ const encoding = require('lib0/encoding');
 const decoding = require('lib0/decoding');
 const map = require('lib0/map');
 
-const PORT = 8081;
+const PORT = process.env.PORT || 8081;
 
 const docs = new Map();
 const messageSync = 0;
@@ -149,8 +149,9 @@ wss.on('connection', (conn, req) => {
     setupWSConnection(conn, req, docName);
 });
 
-server.listen(PORT, () => {
-    console.log(`Yjs WebSocket server running on ws://localhost:${PORT}`);
+const HOST = process.env.HOST || '0.0.0.0';
+server.listen(PORT, HOST, () => {
+    console.log(`Yjs WebSocket server running on ws://${HOST}:${PORT}`);
 });
 
 process.on('SIGINT', () => {

@@ -26,8 +26,9 @@ export function useYjsProvider({ documentId, enabled, username, userColor }: Use
     console.log('Creating Yjs WebSocket provider for document:', documentId);
 
     // Create WebSocket provider
+    const yjsWsUrl = import.meta.env.VITE_YJS_WS_URL || 'ws://localhost:8081';
     const wsProvider = new WebsocketProvider(
-      'ws://localhost:8081',
+      yjsWsUrl,
       documentId,
       ydoc,
       {

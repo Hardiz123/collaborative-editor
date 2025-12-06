@@ -120,6 +120,30 @@ func GetEmail(ctx context.Context) string {
 	return ""
 }
 
+// CORSMiddleware allows all origins, methods, and headers
+func CORSMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Set CORS headers to allow all origins
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			origin = "*"
+		}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		// Handle preflight requests
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Call next handler
+		next.ServeHTTP(w, r)
+	})
+}
+
 // respondWithError sends an error response
 func respondWithError(w http.ResponseWriter, err error) {
 	appErr, ok := err.(*errors.AppError)

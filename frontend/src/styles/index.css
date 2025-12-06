@@ -1,0 +1,133 @@
+@import "tailwindcss";
+@config "../../tailwind.config.js";
+
+@layer base {
+    :root {
+        /* Vibrant, playful light mode defaults */
+        --background: 280 65% 95%;
+        /* Light purple tint */
+        --foreground: 260 25% 20%;
+        /* Dark purple text */
+
+        --card: 0 0% 100%;
+        --card-foreground: 260 25% 20%;
+
+        --popover: 0 0% 100%;
+        --popover-foreground: 260 25% 20%;
+
+        --primary: 262 83% 58%;
+        /* Vibrant Purple */
+        --primary-foreground: 210 40% 98%;
+
+        --secondary: 320 80% 90%;
+        /* Soft Pink */
+        --secondary-foreground: 320 90% 35%;
+
+        --muted: 260 20% 96%;
+        --muted-foreground: 260 10% 55%;
+
+        --accent: 180 70% 90%;
+        /* Soft Cyan */
+        --accent-foreground: 180 80% 30%;
+
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 210 40% 98%;
+
+        --border: 260 20% 90%;
+        --input: 260 20% 90%;
+        --ring: 262 83% 58%;
+
+        --radius: 1rem;
+        /* More rounded corners */
+
+        --chart-1: 12 76% 61%;
+        --chart-2: 173 58% 39%;
+        --chart-3: 197 37% 24%;
+        --chart-4: 43 74% 66%;
+        --chart-5: 27 87% 67%;
+    }
+
+    .dark {
+        /* Vibrant dark mode */
+        --background: 260 40% 10%;
+        /* Deep purple */
+        --foreground: 210 40% 98%;
+
+        --card: 260 40% 15%;
+        --card-foreground: 210 40% 98%;
+
+        --popover: 260 40% 15%;
+        --popover-foreground: 210 40% 98%;
+
+        --primary: 262 83% 65%;
+        /* Brighter Purple */
+        --primary-foreground: 210 40% 98%;
+
+        --secondary: 320 70% 25%;
+        --secondary-foreground: 210 40% 98%;
+
+        --muted: 260 30% 20%;
+        --muted-foreground: 215 20.2% 65.1%;
+
+        --accent: 180 50% 25%;
+        --accent-foreground: 210 40% 98%;
+
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 40% 98%;
+
+        --border: 260 30% 25%;
+        --input: 260 30% 25%;
+        --ring: 262 83% 65%;
+    }
+}
+
+@layer base {
+    * {
+        border-color: hsl(var(--border));
+    }
+
+    body {
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
+        background-image:
+            radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
+            radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
+            radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
+        min-height: 100vh;
+    }
+}
+
+/* Fun Glassmorphism utilities */
+.glass-panel {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
+
+.page-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    /* Fun gradient background */
+}
+
+/* Add some bounce animation */
+@keyframes bounce-small {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+.animate-bounce-small {
+    animation: bounce-small 2s infinite ease-in-out;
+}

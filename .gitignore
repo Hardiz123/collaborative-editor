@@ -23,7 +23,7 @@ vendor/
 go.work
 
 # Environment variables
-.env
+
 
 node_modules
 

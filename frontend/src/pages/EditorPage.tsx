@@ -79,7 +79,9 @@ const EditorPage = () => {
 
     const { ydoc, provider, synced } = useYjsProvider({
         documentId: id!,
-        enabled: !!id && !!document && !!tokenUser, // Wait for token to be parsed
+        // Enable collaboration as soon as the document is loaded.
+        // We allow anonymous fallback so cursors still appear even if the token is missing.
+        enabled: !!id && !!document,
         username: currentUser.name,
         userColor: currentUser.color,
     });

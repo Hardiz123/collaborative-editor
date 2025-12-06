@@ -6,6 +6,8 @@ import Placeholder from '@tiptap/extension-placeholder';
 import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
 import Collaboration from '@tiptap/extension-collaboration';
+import CollaborationCaret from '@tiptap/extension-collaboration-caret';
+import Highlight from '@tiptap/extension-highlight';
 import EditorToolbar from './EditorToolbar';
 import { useEffect } from 'react';
 import * as Y from 'yjs';
@@ -18,16 +20,39 @@ interface TiptapEditorProps {
     editable?: boolean;
 }
 
-const TiptapEditor = ({ ydoc, provider, editable = true }: TiptapEditorProps) => {
-
+const TiptapEditor = ({ ydoc, provider, currentUser, editable = true }: TiptapEditorProps) => {
     const editor = useEditor({
         enableContentCheck: true,
+        onCreate: ({ editor: currentEditor }) => {
+            // Set initial user when editor is created and view is ready
+            if (currentUser && provider) {
+                // Use requestAnimationFrame to ensure view is mounted
+                requestAnimationFrame(() => {
+                    if (currentEditor.view) {
+                        currentEditor.commands.updateUser(currentUser);
+                    }
+                });
+            }
+            
+            // Handle provider sync event
+            if (provider) {
+                provider.on('sync', (isSynced: boolean) => {
+                    // Update user after sync - wait for view to be ready
+                    if (isSynced && currentUser) {
+                        requestAnimationFrame(() => {
+                            if (currentEditor.view) {
+                                currentEditor.commands.updateUser(currentUser);
+                            }
+                        });
+                    }
+                });
+            }
+        },
         extensions: [
             StarterKit.configure({
-                // Disable history extension as Yjs handles undo/redo
-                history: false,
+                // Disable undo/redo as Yjs handles it
+                undoRedo: false,
             }),
-
             Image,
             Link.configure({
                 openOnClick: false,
@@ -39,10 +64,17 @@ const TiptapEditor = ({ ydoc, provider, editable = true }: TiptapEditorProps) =>
                 types: ['heading', 'paragraph'],
             }),
             Underline,
-            // Yjs Collaboration - real-time text sync
-            Collaboration.configure({
+            Highlight,
+            // Yjs Collaboration
+            Collaboration.extend().configure({
                 document: ydoc,
             }),
+            ...(provider
+                ? [CollaborationCaret.configure({
+                    provider,
+                    user: currentUser,
+                })]
+                : []),
         ],
         editable,
         editorProps: {
@@ -50,7 +82,21 @@ const TiptapEditor = ({ ydoc, provider, editable = true }: TiptapEditorProps) =>
                 class: 'prose prose-invert max-w-none focus:outline-none min-h-[500px] p-4 text-white',
             },
         },
-    }, [provider]); // Re-create editor when provider changes
+    }, [provider, ydoc, currentUser]);
+
+    // Update user when it changes - ensure editor view is mounted
+    useEffect(() => {
+        if (editor && currentUser && provider) {
+            // Use requestAnimationFrame to ensure view is ready
+            requestAnimationFrame(() => {
+                if (editor.view) {
+                    console.log('Updating user:', currentUser);
+                    // Call updateUser command directly (no need for focus)
+                    editor.commands.updateUser(currentUser);
+                }
+            });
+        }
+    }, [editor, currentUser, provider]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -60,6 +106,10 @@ const TiptapEditor = ({ ydoc, provider, editable = true }: TiptapEditorProps) =>
             }
         };
     }, [editor]);
+
+    if (!editor) {
+        return null;
+    }
 
     return (
         <div className="w-full flex flex-col rounded-xl overflow-hidden border border-white/20 bg-white/5 backdrop-blur-sm shadow-xl">

@@ -13,23 +13,34 @@ const docs = new Map();
 const messageSync = 0;
 const messageAwareness = 1;
 
-const getYDoc = (docname) => map.setIfUndefined(docs, docname, () => {
-    const doc = new Y.Doc();
-    doc.gc = true;
-    return doc;
-});
+// Store doc + awareness + connection set per document
+const getYDoc = (docName) =>
+    map.setIfUndefined(docs, docName, () => {
+        const doc = new Y.Doc();
+        doc.gc = true;
+        const awareness = new awarenessProtocol.Awareness(doc);
+        // Track connections and the awareness client ids they own
+        const connections = new Map(); // Map<WebSocket, Set<number>>
+        return { doc, awareness, connections };
+    });
 
 const setupWSConnection = (conn, req, docName) => {
     conn.binaryType = 'arraybuffer';
-    const doc = getYDoc(docName);
-    const awareness = new awarenessProtocol.Awareness(doc);
-
-    awareness.setLocalState(null);
+    const { doc, awareness, connections } = getYDoc(docName);
+    connections.set(conn, new Set());
 
     const send = (buf) => {
         if (conn.readyState === WebSocket.OPEN) {
             conn.send(buf, (err) => { if (err) console.error(err); });
         }
+    };
+
+    const broadcast = (buf) => {
+        connections.forEach((_clientIds, client) => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(buf, (err) => { if (err) console.error(err); });
+            }
+        });
     };
 
     // Send sync step 1
@@ -57,7 +68,7 @@ const setupWSConnection = (conn, req, docName) => {
                     encoding.writeVarUint(encoder, messageSync);
                     syncProtocol.readSyncMessage(decoder, encoder, doc, conn);
                     if (encoding.length(encoder) > 1) {
-                        send(encoding.toUint8Array(encoder));
+                        broadcast(encoding.toUint8Array(encoder));
                     }
                     break;
                 case messageAwareness:
@@ -70,27 +81,54 @@ const setupWSConnection = (conn, req, docName) => {
     };
 
     doc.on('update', (update, origin) => {
-        if (origin !== conn) {
-            const encoder = encoding.createEncoder();
-            encoding.writeVarUint(encoder, messageSync);
-            syncProtocol.writeUpdate(encoder, update);
-            send(encoding.toUint8Array(encoder));
-        }
+        // Broadcast document updates to all clients
+        const encoder = encoding.createEncoder();
+        encoding.writeVarUint(encoder, messageSync);
+        syncProtocol.writeUpdate(encoder, update);
+        broadcast(encoding.toUint8Array(encoder));
     });
 
     awareness.on('update', ({ added, updated, removed }, origin) => {
+        // Track which awareness client ids belong to the originating connection
+        const connectionClients = connections.get(origin);
+        if (connectionClients) {
+            added.forEach((clientId) => connectionClients.add(clientId));
+            updated.forEach((clientId) => connectionClients.add(clientId));
+            removed.forEach((clientId) => connectionClients.delete(clientId));
+        }
+
         const changedClients = added.concat(updated).concat(removed);
         const encoder = encoding.createEncoder();
         encoding.writeVarUint(encoder, messageAwareness);
         encoding.writeVarUint8Array(encoder, awarenessProtocol.encodeAwarenessUpdate(awareness, changedClients));
-        send(encoding.toUint8Array(encoder));
+        broadcast(encoding.toUint8Array(encoder));
     });
 
     conn.on('message', messageListener);
     conn.on('close', () => {
+        const clientIds = connections.get(conn);
+        connections.delete(conn);
+
+        // Remove awareness states that belonged to this connection
+        if (clientIds && clientIds.size > 0) {
+            const encoder = encoding.createEncoder();
+            encoding.writeVarUint(encoder, messageAwareness);
+            encoding.writeVarUint8Array(
+                encoder,
+                awarenessProtocol.encodeAwarenessUpdate(
+                    awareness,
+                    awarenessProtocol.removeAwarenessStates(awareness, Array.from(clientIds), null)
+                )
+            );
+            broadcast(encoding.toUint8Array(encoder));
+        }
+
         doc.off('update', messageListener);
-        awareness.off('update', messageListener);
-        awareness.destroy();
+
+        // Cleanup doc entry if nobody is connected
+        if (connections.size === 0) {
+            docs.delete(docName);
+        }
     });
 };
 

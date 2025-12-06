@@ -62,7 +62,17 @@ export function useYjsProvider({ documentId, enabled, username, userColor }: Use
       wsProvider.destroy();
       providerRef.current = null;
     };
-  }, [documentId, enabled, ydoc, username, userColor]);
+  }, [documentId, enabled, ydoc]);
+
+  // Update awareness when user info changes (without recreating provider)
+  useEffect(() => {
+    if (providerRef.current && username && userColor) {
+      providerRef.current.awareness.setLocalStateField('user', {
+        name: username,
+        color: userColor,
+      });
+    }
+  }, [username, userColor]);
 
   return { ydoc, provider, synced };
 }

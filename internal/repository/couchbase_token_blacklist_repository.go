@@ -35,6 +35,7 @@ func hashToken(token string) string {
 }
 
 // AddToken adds a token to the blacklist with its expiration time
+// Uses Couchbase document expiration (TTL) to automatically delete expired tokens
 func (r *CouchbaseTokenBlacklistRepository) AddToken(ctx context.Context, token string, expiresAt time.Time) error {
 	collection := db.GetBlacklistCollection()
 
@@ -47,9 +48,20 @@ func (r *CouchbaseTokenBlacklistRepository) AddToken(ctx context.Context, token 
 		BlacklistedAt: time.Now(),
 	}
 
-	// Use upsert to handle case where token might already be blacklisted
+	// Calculate TTL duration until token expiration
+	// Add a small buffer (1 hour) to ensure token is removed after expiration
+	now := time.Now()
+	ttlDuration := expiresAt.Sub(now) + time.Hour
+	if ttlDuration < 0 {
+		// Token already expired, no need to blacklist
+		return nil
+	}
+
+	// Use upsert with expiration to automatically delete when token expires
+	// Couchbase will automatically delete the document after the expiry duration
 	_, err := collection.Upsert(documentID, blacklistedToken, &gocb.UpsertOptions{
 		Context: ctx,
+		Expiry:  ttlDuration,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to add token to blacklist: %w", err)
@@ -59,40 +71,32 @@ func (r *CouchbaseTokenBlacklistRepository) AddToken(ctx context.Context, token 
 }
 
 // IsTokenBlacklisted checks if a token is in the blacklist
+// Couchbase automatically removes expired documents, so if document exists, token is blacklisted
 func (r *CouchbaseTokenBlacklistRepository) IsTokenBlacklisted(ctx context.Context, token string) (bool, error) {
 	collection := db.GetBlacklistCollection()
 
 	tokenHash := hashToken(token)
 	documentID := fmt.Sprintf("blacklist:%s", tokenHash)
 
-	var blacklistedToken BlacklistedToken
-	getResult, err := collection.Get(documentID, &gocb.GetOptions{
+	// Try to get the document - if it exists, token is blacklisted
+	// Couchbase will automatically return ErrDocumentNotFound if document expired (TTL)
+	_, err := collection.Get(documentID, &gocb.GetOptions{
 		Context: ctx,
 	})
 	if err != nil {
 		if errors.Is(err, gocb.ErrDocumentNotFound) {
-			return false, nil // Token is not blacklisted
+			return false, nil // Token is not blacklisted (or has expired and been auto-deleted)
 		}
 		return false, fmt.Errorf("failed to check token blacklist: %w", err)
 	}
 
-	if err := getResult.Content(&blacklistedToken); err != nil {
-		return false, fmt.Errorf("failed to decode blacklisted token: %w", err)
-	}
-
-	// Check if token has expired (cleanup check)
-	if time.Now().After(blacklistedToken.ExpiresAt) {
-		// Token has expired, remove it from blacklist
-		_, _ = collection.Remove(documentID, &gocb.RemoveOptions{
-			Context: ctx,
-		})
-		return false, nil
-	}
-
+	// Document exists, token is blacklisted
 	return true, nil
 }
 
 // RemoveExpiredTokens removes expired tokens from the blacklist
+// NOTE: This is optional since Couchbase automatically deletes documents when their TTL expires.
+// This method can be used for manual cleanup or to remove tokens that expired before TTL was implemented.
 func (r *CouchbaseTokenBlacklistRepository) RemoveExpiredTokens(ctx context.Context) error {
 	scope := db.GetBlacklistScope()
 

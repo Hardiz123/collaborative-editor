@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Loader2, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,13 +8,39 @@ import { motion } from 'framer-motion';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { getDocument, updateDocument } from '@/services/documents';
 import { CollaboratorModal } from '@/components/ui/collaborator-modal';
+import { CollaboratorAvatars } from '@/components/CollaboratorAvatars';
+import { useAuth } from '@/context/AuthContext';
 
 const EditorPage = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
-    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
+
+    // Mock collaborators - will be replaced with real-time data from WebSocket
+    const [mockCollaborators] = useState([
+        {
+            userId: user?.userID || 'current-user',
+            username: user?.username || 'You',
+            email: user?.email || '',
+            isCurrentUser: true,
+        },
+        // Add some mock collaborators for testing
+        {
+            userId: 'user-2',
+            username: 'Alice Johnson',
+            email: 'alice@example.com',
+            isCurrentUser: false,
+        },
+        {
+            userId: 'user-3',
+            username: 'Bob Smith',
+            email: 'bob@example.com',
+            isCurrentUser: false,
+        },
+    ]);
 
     // Fetch document
     const { data: document, isLoading } = useQuery({
@@ -110,28 +136,38 @@ const EditorPage = () => {
                     <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => setIsShareModalOpen(true)}
-                        className="flex items-center gap-2"
+                        onClick={() => setShowShareModal(true)}
+                        className="bg-white/10 hover:bg-white/20 text-white border-white/20"
                     >
-                        <Share2 className="h-4 w-4" />
+                        <Share2 className="h-4 w-4 mr-2" />
                         Share
                     </Button>
                 </div>
             </motion.div>
 
+            {/* Collaborator Avatars */}
             <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="w-full max-w-5xl flex-1"
+                className="w-full max-w-5xl"
+            >
+                <CollaboratorAvatars collaborators={mockCollaborators} maxDisplay={5} />
+            </motion.div>
+
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="w-full max-w-5xl flex-1 min-h-0"
             >
                 <TiptapEditor content={content} onChange={handleContentChange} />
             </motion.div>
 
             <CollaboratorModal
-                open={isShareModalOpen}
-                onOpenChange={setIsShareModalOpen}
                 documentId={id!}
+                open={showShareModal}
+                onOpenChange={setShowShareModal}
             />
         </div>
     );

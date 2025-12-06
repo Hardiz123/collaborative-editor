@@ -83,6 +83,11 @@ func Connect() error {
 		return fmt.Errorf("failed to setup blacklist scope and collection: %w", err)
 	}
 
+	// Ensure documents scope and collection exist
+	if err := ensureScopeAndCollection("documents", "documents"); err != nil {
+		return fmt.Errorf("failed to setup documents scope and collection: %w", err)
+	}
+
 	log.Printf("Successfully connected to Couchbase bucket: %s", bucketName)
 	return nil
 }
@@ -265,6 +270,17 @@ func GetBlacklistScope() *gocb.Scope {
 func GetBlacklistCollection() *gocb.Collection {
 	scope := bucket.Scope("blacklist")
 	return scope.Collection("tokens")
+}
+
+// GetDocumentsScope returns the documents scope
+func GetDocumentsScope() *gocb.Scope {
+	return bucket.Scope("documents")
+}
+
+// GetDocumentsCollection returns the documents collection from the documents scope
+func GetDocumentsCollection() *gocb.Collection {
+	scope := bucket.Scope("documents")
+	return scope.Collection("documents")
 }
 
 // GetBucketName returns the bucket name

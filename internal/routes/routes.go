@@ -8,7 +8,7 @@ import (
 )
 
 // SetupRoutes configures all application routes
-func SetupRoutes(userHandler *handlers.UserHandler, textHandler *handlers.TextHandler) {
+func SetupRoutes(userHandler *handlers.UserHandler, textHandler *handlers.TextHandler, docHandler *handlers.DocumentHandler) {
 	// ============================================
 	// Public Routes
 	// ============================================
@@ -17,7 +17,7 @@ func SetupRoutes(userHandler *handlers.UserHandler, textHandler *handlers.TextHa
 	// ============================================
 	// Protected Routes (require JWT authentication)
 	// ============================================
-	setupProtectedRoutes(userHandler, textHandler)
+	setupProtectedRoutes(userHandler, textHandler, docHandler)
 
 	// ============================================
 	// System Routes
@@ -33,7 +33,7 @@ func setupPublicRoutes(userHandler *handlers.UserHandler) {
 }
 
 // setupProtectedRoutes configures protected (authenticated) routes
-func setupProtectedRoutes(userHandler *handlers.UserHandler, textHandler *handlers.TextHandler) {
+func setupProtectedRoutes(userHandler *handlers.UserHandler, textHandler *handlers.TextHandler, docHandler *handlers.DocumentHandler) {
 	// User routes
 	http.Handle("/getUser", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(userHandler.GetUserHandler))))
 	http.Handle("/protected", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(handlers.ProtectedHandler))))
@@ -42,6 +42,15 @@ func setupProtectedRoutes(userHandler *handlers.UserHandler, textHandler *handle
 	// Text routes
 	http.Handle("/saveText", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(textHandler.SaveText))))
 	http.Handle("/getText", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(textHandler.GetText))))
+
+	// Document routes
+	// Using Go 1.22+ routing patterns for method and path matching
+	http.Handle("POST /documents", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.CreateDocument))))
+	http.Handle("GET /documents", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.ListDocuments))))
+	http.Handle("GET /documents/{id}", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.GetDocument))))
+	http.Handle("PUT /documents/{id}", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.UpdateDocument))))
+	http.Handle("DELETE /documents/{id}", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.DeleteDocument))))
+	http.Handle("POST /documents/{id}/collaborators", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.AddCollaborator))))
 }
 
 // setupSystemRoutes configures system-level routes

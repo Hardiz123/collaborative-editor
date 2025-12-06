@@ -35,11 +35,13 @@ func main() {
 	// Initialize repository layer
 	userRepo := repository.NewCouchbaseUserRepository()
 	textRepo := repository.NewCouchbaseTextRepository()
+	docRepo := repository.NewCouchbaseDocumentRepository()
 	blacklistRepo := repository.NewCouchbaseTokenBlacklistRepository()
 
 	// Initialize service layer
 	userService := services.NewUserService(userRepo, blacklistRepo)
 	textService := services.NewTextService(textRepo)
+	docService := services.NewDocumentService(docRepo, userRepo)
 
 	// Set blacklist repository in middleware for token validation
 	middleware.SetBlacklistRepository(blacklistRepo)
@@ -47,9 +49,10 @@ func main() {
 	// Initialize handlers
 	userHandler := handlers.NewUserHandler(userService)
 	textHandler := handlers.NewTextHandler(textService)
+	docHandler := handlers.NewDocumentHandler(docService)
 
 	// Setup routes
-	routes.SetupRoutes(userHandler, textHandler)
+	routes.SetupRoutes(userHandler, textHandler, docHandler)
 
 	log.Println("Server starting at http://localhost:8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {

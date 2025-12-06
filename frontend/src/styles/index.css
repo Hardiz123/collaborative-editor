@@ -138,54 +138,143 @@
     animation: bounce-small 2s infinite ease-in-out;
 }
 
-/* Tiptap v3 Collaboration Caret Styles */
+/* Tiptap Collaboration Caret Styles - Based on official example */
+/* Support both singular and plural class names */
+.ProseMirror .collaboration-carets__caret,
+.ProseMirror .collaboration-carets,
+.ProseMirror .collaboration-caret,
+.collaboration-carets__caret,
+.collaboration-carets,
 .collaboration-caret {
-    border-left: 2px solid;
-    border-color: var(--caret-color);
-    margin-left: -1px;
-    margin-right: -1px;
-    pointer-events: none;
-    position: relative;
-    word-break: normal;
+    border-left: 1px solid var(--caret-color) !important;
+    border-right: 1px solid var(--caret-color) !important;
+    margin-left: -1px !important;
+    margin-right: -1px !important;
+    pointer-events: none !important;
+    position: relative !important;
+    word-break: normal !important;
+    background-color: transparent !important;
+    background: transparent !important;
 }
 
+.ProseMirror .collaboration-carets__label,
+.ProseMirror .collaboration-caret__label,
+.collaboration-carets__label,
 .collaboration-caret__label {
-    border-radius: 3px 3px 3px 0;
-    color: #fff;
-    font-size: 12px;
-    font-weight: 600;
-    left: -1px;
-    line-height: normal;
-    padding: 2px 6px;
-    position: absolute;
-    top: -1.4em;
-    user-select: none;
-    white-space: nowrap;
-    background-color: var(--caret-color);
+    border-radius: 3px 3px 3px 0 !important;
+    color: #ffffff !important;
+    font-size: 12px !important;
+    font-style: normal !important;
+    font-weight: 600 !important;
+    left: -1px !important;
+    line-height: normal !important;
+    padding: 0.1rem 0.3rem !important;
+    position: absolute !important;
+    top: -1.4em !important;
+    user-select: none !important;
+    white-space: nowrap !important;
+    background-color: var(--caret-color) !important;
+    z-index: 1000 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    /* Add subtle shadow for depth */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Add triangular pointer to label */
+.ProseMirror .collaboration-carets__label::after,
+.ProseMirror .collaboration-caret__label::after,
+.collaboration-carets__label::after,
+.collaboration-caret__label::after {
+    content: '' !important;
+    position: absolute !important;
+    bottom: -4px !important;
+    left: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    border-left: 4px solid transparent !important;
+    border-right: 4px solid transparent !important;
+    border-top: 4px solid var(--caret-color) !important;
 }
 
 /* Backwards compatibility with Tiptap cursor class names */
+.ProseMirror .collaboration-cursor__caret,
 .collaboration-cursor__caret {
-    border-left: 2px solid;
-    border-color: var(--caret-color);
-    margin-left: -1px;
-    margin-right: -1px;
-    pointer-events: none;
-    position: relative;
-    word-break: normal;
+    border-left: 1px solid var(--caret-color) !important;
+    border-right: 1px solid var(--caret-color) !important;
+    margin-left: -1px !important;
+    margin-right: -1px !important;
+    pointer-events: none !important;
+    position: relative !important;
+    word-break: normal !important;
+    background-color: transparent !important;
+    background: transparent !important;
 }
 
+.ProseMirror .collaboration-cursor__label,
 .collaboration-cursor__label {
-    border-radius: 3px 3px 3px 0;
-    color: #fff;
-    font-size: 12px;
-    font-weight: 600;
-    left: -1px;
-    line-height: normal;
-    padding: 2px 6px;
-    position: absolute;
-    top: -1.4em;
-    user-select: none;
-    white-space: nowrap;
-    background-color: var(--caret-color);
+    border-radius: 3px 3px 3px 0 !important;
+    color: #ffffff !important;
+    font-size: 12px !important;
+    font-style: normal !important;
+    font-weight: 600 !important;
+    left: -1px !important;
+    line-height: normal !important;
+    padding: 0.1rem 0.3rem !important;
+    position: absolute !important;
+    top: -1.4em !important;
+    user-select: none !important;
+    white-space: nowrap !important;
+    background-color: var(--caret-color) !important;
+    z-index: 1000 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15) !important;
+}
+
+.ProseMirror .collaboration-cursor__label::after,
+.collaboration-cursor__label::after {
+    content: '' !important;
+    position: absolute !important;
+    bottom: -4px !important;
+    left: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    border-left: 4px solid transparent !important;
+    border-right: 4px solid transparent !important;
+    border-top: 4px solid var(--caret-color) !important;
+}
+
+/* Ensure editor content area properly displays collaboration cursors */
+.ProseMirror {
+    position: relative;
+    overflow: visible;
+}
+
+/* Prevent any text highlighting or background on collaboration carets */
+.ProseMirror .collaboration-carets__caret,
+.ProseMirror .collaboration-carets,
+.ProseMirror .collaboration-caret,
+.ProseMirror .collaboration-cursor__caret,
+.collaboration-carets__caret,
+.collaboration-carets,
+.collaboration-caret,
+.collaboration-cursor__caret {
+    background: transparent !important;
+    background-color: transparent !important;
+    color: inherit !important;
+    text-decoration: none !important;
+    text-shadow: none !important;
+}
+
+/* Ensure labels are always visible and properly positioned */
+.ProseMirror .collaboration-carets__label,
+.ProseMirror .collaboration-caret__label,
+.ProseMirror .collaboration-cursor__label,
+.collaboration-carets__label,
+.collaboration-caret__label,
+.collaboration-cursor__label {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
 }

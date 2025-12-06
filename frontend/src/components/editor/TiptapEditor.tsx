@@ -138,6 +138,57 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentC
         }
     }, [editor, provider, initialContent]);
 
+    // Debug: Check if collaboration caret elements exist
+    useEffect(() => {
+        if (!editor || !provider) return;
+
+        const checkCaretElements = () => {
+            const carets = document.querySelectorAll('.collaboration-carets, .collaboration-caret, .collaboration-cursor__caret');
+            const labels = document.querySelectorAll('.collaboration-carets__label, .collaboration-caret__label, .collaboration-cursor__label');
+            console.log('Collaboration carets found:', carets.length);
+            console.log('Collaboration labels found:', labels.length);
+            
+            if (carets.length > 0) {
+                carets.forEach((caret, idx) => {
+                    const styles = window.getComputedStyle(caret);
+                    console.log(`Caret ${idx}:`, {
+                        borderLeft: styles.borderLeft,
+                        backgroundColor: styles.backgroundColor,
+                        width: styles.width,
+                        display: styles.display,
+                    });
+                });
+            }
+            
+            if (labels.length > 0) {
+                labels.forEach((label, idx) => {
+                    const styles = window.getComputedStyle(label);
+                    console.log(`Label ${idx}:`, {
+                        backgroundColor: styles.backgroundColor,
+                        display: styles.display,
+                        opacity: styles.opacity,
+                        visibility: styles.visibility,
+                        zIndex: styles.zIndex,
+                    });
+                });
+            }
+        };
+
+        // Check after a delay to allow elements to render
+        const timer = setTimeout(checkCaretElements, 2000);
+        
+        // Also check when provider syncs
+        if (provider) {
+            provider.on('sync', (isSynced: boolean) => {
+                if (isSynced) {
+                    setTimeout(checkCaretElements, 500);
+                }
+            });
+        }
+
+        return () => clearTimeout(timer);
+    }, [editor, provider]);
+
     // Listen to content changes and notify parent
     useEffect(() => {
         if (!editor || !onContentChange) return;

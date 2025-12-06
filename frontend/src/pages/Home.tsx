@@ -1,15 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, Link } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { getUser } from '../services/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, LogOut } from 'lucide-react';
+import { Loader2, LogOut, Plus, FileText } from 'lucide-react';
+import bananaFeature from '@/assets/banana-feature.png';
 
 const Home = () => {
     const { logout, isLoading: isAuthLoading } = useAuth();
+    const navigate = useNavigate();
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [documents, setDocuments] = useState<any[]>([]);
+
+    useEffect(() => {
+        const savedDocs = JSON.parse(localStorage.getItem('collaborative_docs') || '{}');
+        setDocuments(Object.values(savedDocs).sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
+    }, []);
+
+    const createNewDocument = () => {
+        const newId = Date.now().toString();
+        navigate(`/editor/${newId}`);
+    };
 
     const { data: user, isLoading, error } = useQuery({
         queryKey: ['user'],
@@ -70,14 +85,41 @@ const Home = () => {
                             <p className="text-white/80 font-medium text-base md:text-lg break-all">
                                 User ID: <span className="text-white font-mono text-xs md:text-sm bg-white/10 px-2 py-1 rounded">{user?.userID}</span>
                             </p>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-                                {[1, 2, 3].map((i) => (
-                                    <div key={i} className="p-6 rounded-2xl bg-white/10 border border-white/20 hover:bg-white/20 transition-all hover:-translate-y-2 cursor-pointer backdrop-blur-sm">
-                                        <div className="text-4xl mb-4">✨</div>
-                                        <h3 className="font-bold text-xl mb-2 text-pink-300">Fun Feature {i}</h3>
-                                        <p className="text-sm text-gray-200">This is a super cool feature loaded from the API!</p>
+
+                            <div className="mt-8">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-xl font-bold text-white">Your Documents</h3>
+                                    <Button onClick={createNewDocument} className="bg-white text-purple-600 hover:bg-gray-100 font-bold">
+                                        <Plus className="mr-2 h-4 w-4" /> New Document
+                                    </Button>
+                                </div>
+
+                                {documents.length === 0 ? (
+                                    <div className="text-center p-8 bg-white/5 rounded-xl border border-white/10">
+                                        <p className="text-white/60 mb-4">No documents yet. Start creating!</p>
+                                        <Button variant="outline" onClick={createNewDocument} className="border-white/20 text-white hover:bg-white/10">
+                                            Create your first doc
+                                        </Button>
                                     </div>
-                                ))}
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {documents.map((doc) => (
+                                            <Link key={doc.id} to={`/editor/${doc.id}`}>
+                                                <div className="p-4 rounded-xl bg-white/10 border border-white/20 hover:bg-white/20 transition-all hover:-translate-y-1 cursor-pointer backdrop-blur-sm flex items-start gap-3">
+                                                    <div className="p-2 bg-white/10 rounded-lg">
+                                                        <FileText className="h-6 w-6 text-yellow-300" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="font-bold text-white truncate">{doc.title}</h4>
+                                                        <p className="text-xs text-white/60">
+                                                            Edited {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </CardContent>

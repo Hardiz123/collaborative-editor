@@ -33,15 +33,18 @@ func main() {
 
 	// Initialize repository layer
 	userRepo := repository.NewCouchbaseUserRepository()
+	textRepo := repository.NewCouchbaseTextRepository()
 
 	// Initialize service layer
 	userService := services.NewUserService(userRepo)
+	textService := services.NewTextService(textRepo)
 
 	// Initialize handlers
 	userHandler := handlers.NewUserHandler(userService)
+	textHandler := handlers.NewTextHandler(textService)
 
 	// Setup routes
-	routes.SetupRoutes(userHandler)
+	routes.SetupRoutes(userHandler, textHandler)
 
 	log.Println("Server starting at http://localhost:8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {

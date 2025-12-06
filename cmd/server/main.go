@@ -11,6 +11,7 @@ import (
 	"collaborative-editor/internal/repository"
 	"collaborative-editor/internal/routes"
 	"collaborative-editor/internal/services"
+	"collaborative-editor/internal/websocket"
 
 	"github.com/joho/godotenv"
 )
@@ -46,13 +47,19 @@ func main() {
 	// Set blacklist repository in middleware for token validation
 	middleware.SetBlacklistRepository(blacklistRepo)
 
+	// Initialize WebSocket hub and start it
+	hub := websocket.NewHub()
+	go hub.Run()
+	log.Println("WebSocket hub started")
+
 	// Initialize handlers
 	userHandler := handlers.NewUserHandler(userService)
 	textHandler := handlers.NewTextHandler(textService)
 	docHandler := handlers.NewDocumentHandler(docService)
+	wsHandler := handlers.NewWebSocketHandler(hub, docService, userRepo)
 
 	// Setup routes
-	routes.SetupRoutes(userHandler, textHandler, docHandler)
+	routes.SetupRoutes(userHandler, textHandler, docHandler, wsHandler)
 
 	log.Println("Server starting at http://localhost:8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {

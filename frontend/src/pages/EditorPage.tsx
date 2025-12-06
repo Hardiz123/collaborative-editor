@@ -1,14 +1,16 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Loader2, Share2 } from 'lucide-react';
+import { ArrowLeft, Share2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import TiptapEditor from '@/components/editor/TiptapEditor';
 import { motion } from 'framer-motion';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { getDocument, updateDocument } from '@/services/documents';
+import { useQuery } from '@tanstack/react-query';
+import { getDocument } from '@/services/documents';
 import { CollaboratorModal } from '@/components/ui/collaborator-modal';
 import { CollaboratorAvatars } from '@/components/CollaboratorAvatars';
+import { useDocumentWebSocket } from '@/hooks/useDocumentWebSocket';
+import { useYjsProvider } from '@/hooks/useYjsProvider';
 import { useAuth } from '@/context/AuthContext';
 
 const EditorPage = () => {
@@ -16,31 +18,7 @@ const EditorPage = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
     const [showShareModal, setShowShareModal] = useState(false);
-
-    // Mock collaborators - will be replaced with real-time data from WebSocket
-    const [mockCollaborators] = useState([
-        {
-            userId: user?.userID || 'current-user',
-            username: user?.username || 'You',
-            email: user?.email || '',
-            isCurrentUser: true,
-        },
-        // Add some mock collaborators for testing
-        {
-            userId: 'user-2',
-            username: 'Alice Johnson',
-            email: 'alice@example.com',
-            isCurrentUser: false,
-        },
-        {
-            userId: 'user-3',
-            username: 'Bob Smith',
-            email: 'bob@example.com',
-            isCurrentUser: false,
-        },
-    ]);
 
     // Fetch document
     const { data: document, isLoading } = useQuery({
@@ -49,47 +27,41 @@ const EditorPage = () => {
         enabled: !!id,
     });
 
-    // Update effect
+    // WebSocket for real-time collaboration (presence)
+    const { collaborators, isConnected } = useDocumentWebSocket({
+        documentId: id!,
+        enabled: !!id && !!document,
+    });
+
+    // Yjs for real-time text editing
+    const getUserColor = (userId: string) => {
+        const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'];
+        const hash = userId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
+        return colors[hash % colors.length];
+    };
+
+    const currentUser = useMemo(() => ({
+        name: user?.username || 'Anonymous',
+        color: getUserColor(user?.userID || 'anonymous'),
+    }), [user]);
+
+    const { ydoc, provider, synced } = useYjsProvider({
+        documentId: id!,
+        enabled: !!id && !!document,
+        username: currentUser.name,
+        userColor: currentUser.color,
+    });
+
+    // Update title when document loads
     useEffect(() => {
         if (document) {
             setTitle(document.title);
-            setContent(document.content);
         }
     }, [document]);
 
-    // Save mutation
-    const mutation = useMutation({
-        mutationFn: (data: { title: string; content: string }) => updateDocument(id!, data),
-    });
-
-    const debouncedSave = useCallback(
-        (newTitle: string, newContent: string) => {
-            if (!id) return;
-            mutation.mutate({ title: newTitle, content: newContent });
-        },
-        [id, mutation]
-    );
-
-    // Debounced effect for auto-saving
-    useEffect(() => {
-        if (!document) return;
-
-        // Skip first render or if no changes
-        if (title === document.title && content === document.content) return;
-
-        const timer = setTimeout(() => {
-            debouncedSave(title, content);
-        }, 1000);
-
-        return () => clearTimeout(timer);
-    }, [title, content, debouncedSave, document]);
-
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setTitle(e.target.value);
-    };
-
-    const handleContentChange = (newContent: string) => {
-        setContent(newContent);
+        // TODO: Save title to backend
     };
 
     if (isLoading) {
@@ -124,13 +96,11 @@ const EditorPage = () => {
                     />
                 </div>
                 <div className="flex items-center gap-4">
-                    <div className="text-white/60 text-sm">
-                        {mutation.isPending ? (
-                            <span className="flex items-center gap-2 animate-pulse">
-                                <Save className="h-4 w-4" /> Saving...
-                            </span>
+                    <div className="text-white/60 text-sm flex items-center gap-2">
+                        {synced ? (
+                            <span className="text-green-400">✓ Synced</span>
                         ) : (
-                            <span>Saved</span>
+                            <span className="animate-pulse">Syncing...</span>
                         )}
                     </div>
                     <Button
@@ -150,18 +120,36 @@ const EditorPage = () => {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="w-full max-w-5xl"
+                className="w-full max-w-5xl flex items-center gap-4"
             >
-                <CollaboratorAvatars collaborators={mockCollaborators} maxDisplay={5} />
+                <CollaboratorAvatars collaborators={collaborators} maxDisplay={5} />
+                {isConnected && (
+                    <span className="text-xs text-green-400 flex items-center gap-1">
+                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                        Live
+                    </span>
+                )}
             </motion.div>
 
+            {/* Editor */}
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
                 className="w-full max-w-5xl flex-1 min-h-0"
             >
-                <TiptapEditor content={content} onChange={handleContentChange} />
+                {provider ? (
+                    <TiptapEditor
+                        ydoc={ydoc}
+                        provider={provider}
+                        currentUser={currentUser}
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white/60">
+                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                        Connecting to collaboration server...
+                    </div>
+                )}
             </motion.div>
 
             <CollaboratorModal

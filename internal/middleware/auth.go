@@ -3,12 +3,15 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"collaborative-editor/internal/auth"
 	"collaborative-editor/internal/errors"
 	"collaborative-editor/internal/repository"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type contextKey string
@@ -94,6 +97,36 @@ func withUsername(ctx context.Context, username string) context.Context {
 
 func withEmail(ctx context.Context, email string) context.Context {
 	return context.WithValue(ctx, emailKey, email)
+}
+
+// ValidateToken validates a JWT token and returns the user ID
+// This is a standalone function for use in WebSocket handlers
+func ValidateToken(tokenString string) (string, error) {
+	secret := auth.GetJWTSecret()
+	if secret == nil {
+		return "", fmt.Errorf("JWT secret not set")
+	}
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return secret, nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		userID, ok := claims["user_id"].(string)
+		if !ok {
+			return "", fmt.Errorf("invalid user_id in token")
+		}
+		return userID, nil
+	}
+
+	return "", fmt.Errorf("invalid token")
 }
 
 // GetUserID retrieves user ID from context

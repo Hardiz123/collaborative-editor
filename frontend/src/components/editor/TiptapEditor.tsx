@@ -5,24 +5,27 @@ import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
-import Code from '@tiptap/extension-code'
-import Document from '@tiptap/extension-document'
-import Paragraph from '@tiptap/extension-paragraph'
-import Text from '@tiptap/extension-text'
-import Typography from '@tiptap/extension-typography'
+import Collaboration from '@tiptap/extension-collaboration';
+import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 import EditorToolbar from './EditorToolbar';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import * as Y from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
 
 interface TiptapEditorProps {
-    content: string;
-    onChange: (content: string) => void;
+    ydoc: Y.Doc;
+    provider: WebsocketProvider | null;
+    currentUser: { name: string; color: string };
     editable?: boolean;
 }
 
-const TiptapEditor = ({ content, onChange, editable = true }: TiptapEditorProps) => {
+const TiptapEditor = ({ ydoc, provider, currentUser, editable = true }: TiptapEditorProps) => {
     const editor = useEditor({
         extensions: [
-            StarterKit,
+            StarterKit.configure({
+                // Disable history extension as Yjs handles undo/redo
+                history: false,
+            }),
             Image,
             Link.configure({
                 openOnClick: false,
@@ -34,51 +37,32 @@ const TiptapEditor = ({ content, onChange, editable = true }: TiptapEditorProps)
                 types: ['heading', 'paragraph'],
             }),
             Underline,
-            Document, Paragraph, Text, Code, Typography
+            // Yjs Collaboration
+            Collaboration.configure({
+                document: ydoc,
+            }),
+            // Collaborative cursors - only add if provider exists
+            ...(provider ? [CollaborationCursor.configure({
+                provider: provider,
+                user: currentUser,
+            })] : []),
         ],
-        content,
         editable,
-        onUpdate: ({ editor }) => {
-            onChange(editor.getHTML());
-        },
         editorProps: {
             attributes: {
                 class: 'prose prose-invert max-w-none focus:outline-none min-h-[500px] p-4 text-white',
             },
         },
-    });
+    }, [provider]); // Re-create editor when provider changes
 
-    const [, forceUpdate] = useState(0);
-
+    // Cleanup on unmount
     useEffect(() => {
-        if (!editor) return;
-
-        const handleUpdate = () => {
-            forceUpdate((prev) => prev + 1);
-        };
-
-        editor.on('selectionUpdate', handleUpdate);
-        editor.on('update', handleUpdate);
-        editor.on('transaction', handleUpdate);
-
         return () => {
-            editor.off('selectionUpdate', handleUpdate);
-            editor.off('update', handleUpdate);
-            editor.off('transaction', handleUpdate);
+            if (editor) {
+                editor.destroy();
+            }
         };
     }, [editor]);
-
-    // Update content if it changes externally (e.g. loading from DB)
-    // But be careful not to overwrite user input while typing
-    useEffect(() => {
-        if (editor && content && editor.getHTML() !== content) {
-            // Only update if the content is significantly different to avoid cursor jumping
-            // Ideally we'd compare JSON content, but HTML check is okay for initial load
-            if (editor.getText() === '' && content !== '<p></p>') {
-                editor.commands.setContent(content);
-            }
-        }
-    }, [content, editor]);
 
     return (
         <div className="w-full flex flex-col rounded-xl overflow-hidden border border-white/20 bg-white/5 backdrop-blur-sm shadow-xl">

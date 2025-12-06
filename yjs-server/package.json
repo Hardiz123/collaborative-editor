@@ -1,0 +1,23 @@
+{
+  "name": "yjs-server",
+  "version": "1.0.0",
+  "description": "Yjs WebSocket server for collaborative editing",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "yjs",
+    "websocket",
+    "collaboration"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "lib0": "^0.2.114",
+    "ws": "^8.18.3",
+    "y-protocols": "^1.0.6",
+    "yjs": "^13.6.27"
+  }
+}

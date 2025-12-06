@@ -8,7 +8,7 @@ import (
 )
 
 // SetupRoutes configures all application routes
-func SetupRoutes(userHandler *handlers.UserHandler, textHandler *handlers.TextHandler, docHandler *handlers.DocumentHandler) {
+func SetupRoutes(userHandler *handlers.UserHandler, textHandler *handlers.TextHandler, docHandler *handlers.DocumentHandler, wsHandler *handlers.WebSocketHandler) {
 	// ============================================
 	// Public Routes
 	// ============================================
@@ -18,6 +18,11 @@ func SetupRoutes(userHandler *handlers.UserHandler, textHandler *handlers.TextHa
 	// Protected Routes (require JWT authentication)
 	// ============================================
 	setupProtectedRoutes(userHandler, textHandler, docHandler)
+
+	// ============================================
+	// WebSocket Routes
+	// ============================================
+	setupWebSocketRoutes(wsHandler)
 
 	// ============================================
 	// System Routes
@@ -61,6 +66,13 @@ func setupProtectedRoutes(userHandler *handlers.UserHandler, textHandler *handle
 	http.Handle("PUT /documents/{id}", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.UpdateDocument))))
 	http.Handle("DELETE /documents/{id}", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.DeleteDocument))))
 	http.Handle("POST /documents/{id}/collaborators", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.AddCollaborator))))
+}
+
+// setupWebSocketRoutes configures WebSocket routes
+func setupWebSocketRoutes(wsHandler *handlers.WebSocketHandler) {
+	// WebSocket endpoint for real-time collaboration
+	// Note: WebSocket upgrade doesn't work well with AuthMiddleware, so we handle auth inside the handler
+	http.Handle("GET /ws/documents/{id}", middleware.CORSMiddleware(http.HandlerFunc(wsHandler.HandleWebSocket)))
 }
 
 // setupSystemRoutes configures system-level routes

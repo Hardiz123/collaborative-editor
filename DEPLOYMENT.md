@@ -40,18 +40,29 @@ We'll use:
 3. **Configure the service**:
    - Railway should auto-detect it's a Go project (or you can set builder to "Dockerfile" if you prefer)
    - **Important**: If you get Nixpacks errors, go to Settings → Build → Builder and select "Dockerfile"
-   - Add the following environment variables in Railway dashboard:
+
+4. **Add Environment Variables** (CRITICAL - Service won't work without these):
+   - Click on your Go Backend service
+   - Go to the **Variables** tab
+   - Click **+ New Variable** and add each variable:
      ```
      PORT=8080
-     COUCHBASE_CONNECTION_STRING=your-couchbase-connection-string
+     COUCHBASE_CONNECTION_STRING=couchbases://cb.jlqsadh62vp6qu0.cloud.couchbase.com
      COUCHBASE_USERNAME=collab-access
      COUCHBASE_PASSWORD=Password@123
      COUCHBASE_BUCKET_NAME=collab-editor
-     JWT_SECRET=secret-secure
+     JWT_SECRET=<generate-a-secure-random-string>
      ```
+   - **Important**: Generate a secure JWT_SECRET using:
+     ```bash
+     openssl rand -base64 32
+     ```
+   - See `RAILWAY_ENV_SETUP.md` for detailed instructions
 
-4. **Deploy**:
-   - Railway will automatically build and deploy
+5. **Redeploy**:
+   - After adding environment variables, go to **Deployments** tab
+   - Click **Redeploy** on the latest deployment
+   - Railway will automatically rebuild with the new environment variables
    - Note the generated URL (e.g., `https://your-app.up.railway.app`)
    - This will be your API URL
 

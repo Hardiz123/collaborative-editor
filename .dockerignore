@@ -1,0 +1,11 @@
+node_modules
+frontend
+yjs-server
+tmp
+.git
+.vscode
+.idea
+*.log
+dist
+.DS_Store
+

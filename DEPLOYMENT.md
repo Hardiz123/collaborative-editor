@@ -38,7 +38,8 @@ We'll use:
    - Choose your repository
 
 3. **Configure the service**:
-   - Railway will auto-detect it's a Go project
+   - Railway should auto-detect it's a Go project (or you can set builder to "Dockerfile" if you prefer)
+   - **Important**: If you get Nixpacks errors, go to Settings → Build → Builder and select "Dockerfile"
    - Add the following environment variables in Railway dashboard:
      ```
      PORT=8080
@@ -189,10 +190,21 @@ VITE_YJS_WS_URL=wss://your-yjs-server.up.railway.app
 - Ensure credentials are correct
 
 ### Build Failures
-- Check Railway/Cloudflare Pages build logs
-- Ensure all dependencies are in package.json/go.mod
-- Verify Node.js and Go versions are compatible
-- For Cloudflare Pages, check that the root directory is set to `frontend`
+
+**Railway Go Backend:**
+- **Nixpacks errors**: If you see "nix-collect-garbage" errors, switch to Dockerfile builder:
+  1. Go to Railway project → Settings → Build
+  2. Change Builder from "Nixpacks" to "Dockerfile"
+  3. Redeploy
+- Ensure all dependencies are in go.mod
+- Check that Go version in Dockerfile matches your go.mod (currently 1.23)
+- Verify environment variables are set correctly
+
+**Cloudflare Pages:**
+- Check build logs
+- Ensure all dependencies are in package.json
+- Verify Node.js version is compatible
+- Check that the root directory is set to `frontend`
 - **TipTap dependency conflicts**: The project includes `.npmrc` with `legacy-peer-deps=true`. If issues persist, try build command: `npm install --legacy-peer-deps && npm run build`
 
 ## Free Tier Limits

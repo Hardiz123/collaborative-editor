@@ -38,8 +38,8 @@ We'll use:
    - Choose your repository
 
 3. **Configure the service**:
-   - Railway should auto-detect it's a Go project (or you can set builder to "Dockerfile" if you prefer)
-   - **Important**: If you get Nixpacks errors, go to Settings → Build → Builder and select "Dockerfile"
+   - Railway will auto-detect it's a Go project using Nixpacks
+   - It will automatically build and run your Go application
 
 4. **Add Environment Variables** (CRITICAL - Service won't work without these):
    - Click on your Go Backend service
@@ -203,15 +203,13 @@ VITE_YJS_WS_URL=wss://your-yjs-server.up.railway.app
 ### Build Failures
 
 **Railway Go Backend:**
-- **Nixpacks errors**: If you see "nix-collect-garbage" errors, switch to Dockerfile builder:
-  1. Go to Railway project → Settings → Build
-  2. Change Builder from "Nixpacks" to "Dockerfile"
-  3. Redeploy
 - **Go version mismatch**: If you see "requires go >= 1.24.0" errors:
-  - The Dockerfile uses Go 1.23 with `GOTOOLCHAIN=auto` to download Go 1.24 automatically
+  - Railway's Nixpacks should handle Go toolchain automatically
   - If that fails, you may need to downgrade go.mod to 1.23 (change `go 1.24.0` to `go 1.23` in go.mod)
+- **Build errors**: Check Railway build logs for specific errors
 - Ensure all dependencies are in go.mod
 - Verify environment variables are set correctly
+- Railway will auto-detect Go and build using Nixpacks
 
 **Cloudflare Pages:**
 - Check build logs

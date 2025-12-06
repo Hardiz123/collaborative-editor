@@ -18,6 +18,8 @@ const EditorPage = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [title, setTitle] = useState('');
+    const [content, setContent] = useState('');
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [showShareModal, setShowShareModal] = useState(false);
 
     // Fetch document
@@ -86,21 +88,33 @@ const EditorPage = () => {
         userColor: currentUser.color,
     });
 
-    // Update title when document loads
+    // Update title and content when document loads
     useEffect(() => {
         if (document) {
             setTitle(document.title);
+            setContent(document.content || '');
+            setIsInitialLoad(true);
+            // Mark initial load as complete after a short delay to avoid saving on mount
+            const timer = setTimeout(() => {
+                setIsInitialLoad(false);
+            }, 1000);
+            return () => clearTimeout(timer);
         }
     }, [document]);
 
     // Title save mutation
     const titleMutation = useMutation({
-        mutationFn: (newTitle: string) => updateDocument(id!, { title: newTitle, content: document?.content || '' }),
+        mutationFn: (newTitle: string) => updateDocument(id!, { title: newTitle, content: content }),
+    });
+
+    // Content save mutation
+    const contentMutation = useMutation({
+        mutationFn: (newContent: string) => updateDocument(id!, { title: title, content: newContent }),
     });
 
     // Debounced title save
     useEffect(() => {
-        if (!document || title === document.title) return;
+        if (!document || title === document.title || isInitialLoad) return;
 
         const timer = setTimeout(() => {
             console.log('Saving title:', title);
@@ -108,7 +122,19 @@ const EditorPage = () => {
         }, 1000);
 
         return () => clearTimeout(timer);
-    }, [title, document]);
+    }, [title, document, isInitialLoad]);
+
+    // Debounced content save
+    useEffect(() => {
+        if (!document || content === document.content || isInitialLoad) return;
+
+        const timer = setTimeout(() => {
+            console.log('Saving content (length):', content.length);
+            contentMutation.mutate(content);
+        }, 2000); // Slightly longer delay for content to reduce API calls
+
+        return () => clearTimeout(timer);
+    }, [content, document, isInitialLoad]);
 
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setTitle(e.target.value);
@@ -157,10 +183,10 @@ const EditorPage = () => {
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="text-white/60 text-sm flex items-center gap-2">
-                        {titleMutation.isPending ? (
+                        {(titleMutation.isPending || contentMutation.isPending) ? (
                             <span className="flex items-center gap-2 animate-pulse">
                                 <Loader2 className="h-3 w-3 animate-spin" />
-                                Saving title...
+                                Saving...
                             </span>
                         ) : synced ? (
                             <span className="text-green-400">✓ Synced</span>
@@ -208,6 +234,10 @@ const EditorPage = () => {
                         ydoc={ydoc}
                         provider={provider}
                         currentUser={currentUser}
+                        initialContent={document?.content}
+                        onContentChange={(newContent) => {
+                            setContent(newContent);
+                        }}
                     />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center text-white/60">

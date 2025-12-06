@@ -18,9 +18,11 @@ interface TiptapEditorProps {
     provider: WebsocketProvider | null;
     currentUser: { name: string; color: string };
     editable?: boolean;
+    onContentChange?: (content: string) => void;
+    initialContent?: string;
 }
 
-const TiptapEditor = ({ ydoc, provider, currentUser, editable = true }: TiptapEditorProps) => {
+const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentChange, initialContent }: TiptapEditorProps) => {
     const editor = useEditor({
         enableContentCheck: true,
         onCreate: ({ editor: currentEditor }) => {
@@ -84,6 +86,16 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true }: TiptapEd
         },
     }, [provider, ydoc, currentUser]);
 
+    // Keep awareness user data in sync for cursor rendering
+    useEffect(() => {
+        if (provider && currentUser) {
+            provider.awareness.setLocalStateField('user', {
+                name: currentUser.name,
+                color: currentUser.color,
+            });
+        }
+    }, [provider, currentUser]);
+
     // Update user when it changes - ensure editor view is mounted
     useEffect(() => {
         if (editor && currentUser && provider) {
@@ -97,6 +109,60 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true }: TiptapEd
             });
         }
     }, [editor, currentUser, provider]);
+
+    // Initialize content from database if Yjs document is empty
+    useEffect(() => {
+        if (!editor || !initialContent || !provider) return;
+
+        // Wait for sync to complete, then check if document is empty
+        const checkAndInitialize = () => {
+            if (provider.synced) {
+                const currentContent = editor.getHTML();
+                // Only set initial content if editor is empty and we have initial content
+                if ((!currentContent || currentContent === '<p></p>') && initialContent && initialContent.trim() !== '') {
+                    console.log('Initializing editor with content from database');
+                    // Set initial content (Yjs will sync it)
+                    editor.commands.setContent(initialContent);
+                }
+            }
+        };
+
+        if (provider.synced) {
+            checkAndInitialize();
+        } else {
+            provider.on('sync', (isSynced: boolean) => {
+                if (isSynced) {
+                    setTimeout(checkAndInitialize, 200);
+                }
+            });
+        }
+    }, [editor, provider, initialContent]);
+
+    // Listen to content changes and notify parent
+    useEffect(() => {
+        if (!editor || !onContentChange) return;
+
+        const handleUpdate = () => {
+            const html = editor.getHTML();
+            onContentChange(html);
+        };
+
+        // Listen to editor updates (debounced to avoid too many calls)
+        editor.on('update', handleUpdate);
+        // Also listen to Yjs sync events to catch remote changes
+        if (provider) {
+            provider.on('sync', (isSynced: boolean) => {
+                if (isSynced) {
+                    // Small delay to ensure content is synced
+                    setTimeout(handleUpdate, 100);
+                }
+            });
+        }
+
+        return () => {
+            editor.off('update', handleUpdate);
+        };
+    }, [editor, provider, onContentChange]);
 
     // Cleanup on unmount
     useEffect(() => {

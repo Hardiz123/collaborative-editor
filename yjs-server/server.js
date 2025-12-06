@@ -111,14 +111,17 @@ const setupWSConnection = (conn, req, docName) => {
 
         // Remove awareness states that belonged to this connection
         if (clientIds && clientIds.size > 0) {
+            const removedClientIds = Array.from(clientIds);
+
+            // First remove the states from awareness so internal maps are cleaned up
+            awarenessProtocol.removeAwarenessStates(awareness, removedClientIds, null);
+
+            // Then broadcast an awareness update with the removed client ids
             const encoder = encoding.createEncoder();
             encoding.writeVarUint(encoder, messageAwareness);
             encoding.writeVarUint8Array(
                 encoder,
-                awarenessProtocol.encodeAwarenessUpdate(
-                    awareness,
-                    awarenessProtocol.removeAwarenessStates(awareness, Array.from(clientIds), null)
-                )
+                awarenessProtocol.encodeAwarenessUpdate(awareness, removedClientIds)
             );
             broadcast(encoding.toUint8Array(encoder));
         }

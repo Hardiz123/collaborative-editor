@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useMemo } from 'react';
 
 interface Collaborator {
     userId: string;
@@ -10,6 +11,8 @@ interface Collaborator {
 
 interface CollaboratorAvatarsProps {
     collaborators: Collaborator[];
+    currentUser?: { name: string; color: string };
+    currentUserId?: string;
     maxDisplay?: number;
 }
 
@@ -31,16 +34,47 @@ function getUserColor(userId: string): string {
 
 // Get user initials from username
 function getInitials(username: string): string {
-    const parts = username.split(' ');
-    if (parts.length >= 2) {
-        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    if (!username || username.trim().length === 0) {
+        return '??';
     }
-    return username.slice(0, 2).toUpperCase();
+    const parts = username.trim().split(' ').filter(p => p.length > 0);
+    if (parts.length >= 2) {
+        const first = parts[0][0] || '';
+        const last = parts[parts.length - 1][0] || '';
+        return (first + last).toUpperCase();
+    }
+    if (username.length >= 2) {
+        return username.slice(0, 2).toUpperCase();
+    }
+    return username[0].toUpperCase() + username[0].toUpperCase();
 }
 
-export function CollaboratorAvatars({ collaborators, maxDisplay = 5 }: CollaboratorAvatarsProps) {
-    const displayedCollaborators = collaborators.slice(0, maxDisplay);
-    const overflowCount = Math.max(0, collaborators.length - maxDisplay);
+export function CollaboratorAvatars({ collaborators, currentUser, currentUserId, maxDisplay = 5 }: CollaboratorAvatarsProps) {
+    // Ensure current user is included in the list
+    const allCollaborators = useMemo(() => {
+        if (!currentUser || !currentUserId) return collaborators;
+        
+        // Check if current user is already in the list
+        const isCurrentUserInList = collaborators.some(c => c.userId === currentUserId);
+        
+        if (isCurrentUserInList) {
+            return collaborators;
+        }
+        
+        // Add current user to the list
+        return [
+            {
+                userId: currentUserId,
+                username: currentUser.name,
+                email: '',
+                isCurrentUser: true,
+            },
+            ...collaborators,
+        ];
+    }, [collaborators, currentUser, currentUserId]);
+    
+    const displayedCollaborators = allCollaborators.slice(0, maxDisplay);
+    const overflowCount = Math.max(0, allCollaborators.length - maxDisplay);
 
     return (
         <div className="flex items-center gap-2">

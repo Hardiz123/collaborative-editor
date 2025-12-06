@@ -8,7 +8,6 @@ import { getUser } from '../services/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, LogOut, Plus, FileText } from 'lucide-react';
-import bananaFeature from '@/assets/banana-feature.png';
 
 const Home = () => {
     const { logout, isLoading: isAuthLoading } = useAuth();

@@ -1,92 +1,78 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import TiptapEditor from '@/components/editor/TiptapEditor';
 import { motion } from 'framer-motion';
-
-interface DocumentData {
-    id: string;
-    title: string;
-    content: string;
-    updatedAt: string;
-}
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { getDocument, updateDocument } from '@/services/documents';
+import { CollaboratorModal } from '@/components/ui/collaborator-modal';
 
 const EditorPage = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const [title, setTitle] = useState('Untitled Document');
+    const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
-    const isFirstRender = useRef(true);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
-    // Load document
+    // Fetch document
+    const { data: document, isLoading } = useQuery({
+        queryKey: ['document', id],
+        queryFn: () => getDocument(id!),
+        enabled: !!id,
+    });
+
+    // Update effect
     useEffect(() => {
-        if (!id) return;
-
-        const savedDocs = JSON.parse(localStorage.getItem('collaborative_docs') || '{}');
-        const doc = savedDocs[id];
-
-        if (doc) {
-            setTitle(doc.title);
-            setContent(doc.content);
-        } else {
-            // New document, initialize
-            const newDoc: DocumentData = {
-                id,
-                title: 'Untitled Document',
-                content: '<p>Start writing...</p>',
-                updatedAt: new Date().toISOString(),
-            };
-            savedDocs[id] = newDoc;
-            localStorage.setItem('collaborative_docs', JSON.stringify(savedDocs));
-            setContent(newDoc.content);
+        if (document) {
+            setTitle(document.title);
+            setContent(document.content);
         }
-    }, [id]);
+    }, [document]);
 
-    // Save document
-    const saveDocument = useCallback((newContent: string, newTitle: string) => {
-        if (!id) return;
-        setIsSaving(true);
+    // Save mutation
+    const mutation = useMutation({
+        mutationFn: (data: { title: string; content: string }) => updateDocument(id!, data),
+    });
 
-        const savedDocs = JSON.parse(localStorage.getItem('collaborative_docs') || '{}');
-        savedDocs[id] = {
-            id,
-            title: newTitle,
-            content: newContent,
-            updatedAt: new Date().toISOString(),
-        };
+    const debouncedSave = useCallback(
+        (newTitle: string, newContent: string) => {
+            if (!id) return;
+            mutation.mutate({ title: newTitle, content: newContent });
+        },
+        [id, mutation]
+    );
 
-        localStorage.setItem('collaborative_docs', JSON.stringify(savedDocs));
-
-        // Fake network delay for UX
-        setTimeout(() => setIsSaving(false), 500);
-    }, [id]);
-
-    // Debounced save effect
+    // Debounced effect for auto-saving
     useEffect(() => {
-        if (isFirstRender.current) {
-            isFirstRender.current = false;
-            return;
-        }
+        if (!document) return;
 
-        const timeoutId = setTimeout(() => {
-            saveDocument(content, title);
+        // Skip first render or if no changes
+        if (title === document.title && content === document.content) return;
+
+        const timer = setTimeout(() => {
+            debouncedSave(title, content);
         }, 1000);
 
-        return () => clearTimeout(timeoutId);
-    }, [content, title, saveDocument]);
+        return () => clearTimeout(timer);
+    }, [title, content, debouncedSave, document]);
 
-    // Handle content change
+    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setTitle(e.target.value);
+    };
+
     const handleContentChange = (newContent: string) => {
         setContent(newContent);
     };
 
-    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newTitle = e.target.value;
-        setTitle(newTitle);
-    };
+    if (isLoading) {
+        return (
+            <div className="h-screen w-full flex items-center justify-center bg-zinc-950 text-white">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="page-container flex-col !justify-start !pt-8 gap-6">
@@ -111,14 +97,25 @@ const EditorPage = () => {
                         placeholder="Untitled Document"
                     />
                 </div>
-                <div className="flex items-center gap-2 text-white/60 text-sm">
-                    {isSaving ? (
-                        <span className="flex items-center gap-2 animate-pulse">
-                            <Save className="h-4 w-4" /> Saving...
-                        </span>
-                    ) : (
-                        <span>Saved locally</span>
-                    )}
+                <div className="flex items-center gap-4">
+                    <div className="text-white/60 text-sm">
+                        {mutation.isPending ? (
+                            <span className="flex items-center gap-2 animate-pulse">
+                                <Save className="h-4 w-4" /> Saving...
+                            </span>
+                        ) : (
+                            <span>Saved</span>
+                        )}
+                    </div>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setIsShareModalOpen(true)}
+                        className="flex items-center gap-2"
+                    >
+                        <Share2 className="h-4 w-4" />
+                        Share
+                    </Button>
                 </div>
             </motion.div>
 
@@ -130,6 +127,12 @@ const EditorPage = () => {
             >
                 <TiptapEditor content={content} onChange={handleContentChange} />
             </motion.div>
+
+            <CollaboratorModal
+                open={isShareModalOpen}
+                onOpenChange={setIsShareModalOpen}
+                documentId={id!}
+            />
         </div>
     );
 };

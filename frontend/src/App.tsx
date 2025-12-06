@@ -3,7 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import Home from './pages/Home';
+import Dashboard from './pages/Dashboard';
 import EditorPage from './pages/EditorPage';
 
 function App() {
@@ -15,7 +15,7 @@ function App() {
           <Route path="/signup" element={<Signup />} />
 
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<Home />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/editor/:id" element={<EditorPage />} />
           </Route>
 

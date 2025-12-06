@@ -45,6 +45,11 @@ func setupProtectedRoutes(userHandler *handlers.UserHandler, textHandler *handle
 
 	// Document routes
 	// Using Go 1.22+ routing patterns for method and path matching
+	// We need to explicitly handle OPTIONS for CORS since method-specific matches don't match OPTIONS
+	http.Handle("OPTIONS /documents", middleware.CORSMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	http.Handle("OPTIONS /documents/{id}", middleware.CORSMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	http.Handle("OPTIONS /documents/{id}/collaborators", middleware.CORSMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+
 	http.Handle("POST /documents", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.CreateDocument))))
 	http.Handle("GET /documents", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.ListDocuments))))
 	http.Handle("GET /documents/{id}", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.GetDocument))))

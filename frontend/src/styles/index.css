@@ -110,9 +110,15 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 2rem;
+    padding: 1rem;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     /* Fun gradient background */
+}
+
+@media (min-width: 768px) {
+    .page-container {
+        padding: 2rem;
+    }
 }
 
 /* Add some bounce animation */

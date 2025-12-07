@@ -191,12 +191,11 @@ func (s *DocumentService) hasAccess(doc *document.Document, userID string) bool 
 // Helper: convert to response
 func (s *DocumentService) toResponse(doc *document.Document) *DocumentResponse {
 	return &DocumentResponse{
-		ID:              doc.ID,
-		Title:           doc.Title,
-		Content:         doc.Content,
-		OwnerID:         doc.OwnerID,
-		CollaboratorIDs: doc.CollaboratorIDs,
-		CreatedAt:       doc.CreatedAt,
-		UpdatedAt:       doc.UpdatedAt,
+		ID:        doc.ID,
+		Title:     doc.Title,
+		Content:   doc.Content,
+		OwnerID:   doc.OwnerID,
+		CreatedAt: doc.CreatedAt,
+		UpdatedAt: doc.UpdatedAt,
 	}
 }

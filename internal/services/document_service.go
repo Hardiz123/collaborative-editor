@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"collaborative-editor/internal/errors"
@@ -180,12 +181,7 @@ func (s *DocumentService) hasAccess(doc *document.Document, userID string) bool 
 	if doc.OwnerID == userID {
 		return true
 	}
-	for _, id := range doc.CollaboratorIDs {
-		if id == userID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(doc.CollaboratorIDs, userID)
 }
 
 // Helper: convert to response

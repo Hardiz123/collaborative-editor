@@ -192,6 +192,7 @@ func (h *Hub) GetActiveUsers(documentID string) []UserInfo {
 	defer h.mu.RUnlock()
 
 	clients := h.documents[documentID]
+	log.Printf("Active users in document %s: %v", documentID, clients)
 	if clients == nil {
 		return []UserInfo{}
 	}

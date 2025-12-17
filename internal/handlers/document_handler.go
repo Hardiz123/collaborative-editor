@@ -132,6 +132,7 @@ func (h *DocumentHandler) AddCollaborator(w http.ResponseWriter, r *http.Request
 }
 
 // ListDocuments handles listing documents for a user
+// The concurrent processing (goroutines and channels) is handled in the service layer
 func (h *DocumentHandler) ListDocuments(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	if userID == "" {
@@ -139,6 +140,7 @@ func (h *DocumentHandler) ListDocuments(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// The service layer handles concurrent processing using goroutines and channels
 	docs, err := h.docService.ListDocuments(r.Context(), userID)
 	if err != nil {
 		respondWithError(w, err)

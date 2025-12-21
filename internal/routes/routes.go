@@ -13,6 +13,7 @@ func SetupRoutes(userHandler *handlers.UserHandler, textHandler *handlers.TextHa
 	// Public Routes
 	// ============================================
 	setupPublicRoutes(userHandler)
+	setupSharedRoutes(docHandler)
 
 	// ============================================
 	// Protected Routes (require JWT authentication)
@@ -44,6 +45,12 @@ func setupPublicRoutes(userHandler *handlers.UserHandler) {
 	http.Handle("/login", middleware.CORSMiddleware(http.HandlerFunc(userHandler.Login)))
 }
 
+// setupSharedRoutes configures shared link routes (public)
+func setupSharedRoutes(docHandler *handlers.DocumentHandler) {
+	registerOPTIONS("/shared/{id}/access")
+	http.Handle("GET /shared/{id}/access", middleware.CORSMiddleware(http.HandlerFunc(docHandler.AccessSharedLink)))
+}
+
 // setupProtectedRoutes configures protected (authenticated) routes
 func setupProtectedRoutes(userHandler *handlers.UserHandler, textHandler *handlers.TextHandler, docHandler *handlers.DocumentHandler) {
 	// User routes
@@ -58,7 +65,7 @@ func setupProtectedRoutes(userHandler *handlers.UserHandler, textHandler *handle
 	// Document routes
 	// Using Go 1.22+ routing patterns for method and path matching
 	// Register OPTIONS handlers for CORS preflight
-	registerOPTIONS("/documents", "/documents/{id}", "/documents/{id}/collaborators")
+	registerOPTIONS("/documents", "/documents/{id}", "/documents/{id}/collaborators", "/documents/{id}/share")
 
 	http.Handle("POST /documents", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.CreateDocument))))
 	http.Handle("GET /documents", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.ListDocuments))))
@@ -66,6 +73,7 @@ func setupProtectedRoutes(userHandler *handlers.UserHandler, textHandler *handle
 	http.Handle("PUT /documents/{id}", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.UpdateDocument))))
 	http.Handle("DELETE /documents/{id}", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.DeleteDocument))))
 	http.Handle("POST /documents/{id}/collaborators", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.AddCollaborator))))
+	http.Handle("POST /documents/{id}/share", middleware.CORSMiddleware(middleware.AuthMiddleware(http.HandlerFunc(docHandler.CreateSharedLink))))
 }
 
 // setupWebSocketRoutes configures WebSocket routes

@@ -149,3 +149,41 @@ func (h *DocumentHandler) ListDocuments(w http.ResponseWriter, r *http.Request) 
 
 	respondWithJSON(w, http.StatusOK, docs)
 }
+
+// CreateSharedLink handles creating a shareable link
+func (h *DocumentHandler) CreateSharedLink(w http.ResponseWriter, r *http.Request) {
+	docID := r.PathValue("id")
+
+	var req services.CreateSharedLinkRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, errors.WrapError(errors.ErrInvalidInput, err))
+		return
+	}
+
+	userID := middleware.GetUserID(r.Context())
+	if userID == "" {
+		respondWithError(w, errors.ErrUnauthorized)
+		return
+	}
+
+	resp, err := h.docService.CreateSharedLink(r.Context(), userID, docID, &req)
+	if err != nil {
+		respondWithError(w, err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusCreated, resp)
+}
+
+// AccessSharedLink handles accessing a shared link
+func (h *DocumentHandler) AccessSharedLink(w http.ResponseWriter, r *http.Request) {
+	linkID := r.PathValue("id")
+
+	resp, err := h.docService.AccessSharedLink(r.Context(), linkID)
+	if err != nil {
+		respondWithError(w, err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, resp)
+}

@@ -39,11 +39,12 @@ func main() {
 	textRepo := repository.NewCouchbaseTextRepository()
 	docRepo := repository.NewCouchbaseDocumentRepository()
 	blacklistRepo := repository.NewCouchbaseTokenBlacklistRepository()
+	linkRepo := repository.NewCouchbaseSharedLinkRepository()
 
 	// Initialize service layer
 	userService := services.NewUserService(userRepo, blacklistRepo)
 	textService := services.NewTextService(textRepo)
-	docService := services.NewDocumentService(docRepo, userRepo)
+	docService := services.NewDocumentService(docRepo, userRepo, linkRepo)
 
 	// Set blacklist repository in middleware for token validation
 	middleware.SetBlacklistRepository(blacklistRepo)

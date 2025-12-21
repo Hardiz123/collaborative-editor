@@ -17,9 +17,11 @@ import (
 type contextKey string
 
 const (
-	userIDKey   contextKey = "userID"
-	usernameKey contextKey = "username"
-	emailKey    contextKey = "email"
+	userIDKey     contextKey = "userID"
+	usernameKey   contextKey = "username"
+	emailKey      contextKey = "email"
+	documentIDKey contextKey = "documentID"
+	permissionKey contextKey = "permission"
 )
 
 var blacklistRepo repository.TokenBlacklistRepository
@@ -80,6 +82,13 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		ctx = withUserID(ctx, claims.UserID)
 		ctx = withUsername(ctx, claims.Username)
 		ctx = withEmail(ctx, claims.Email)
+		// Add guest specific claims if present
+		if claims.DocumentID != "" {
+			ctx = withDocumentID(ctx, claims.DocumentID)
+		}
+		if claims.Permission != "" {
+			ctx = withPermission(ctx, claims.Permission)
+		}
 
 		// Call next handler with updated context
 		next.ServeHTTP(w, r.WithContext(ctx))
@@ -97,6 +106,14 @@ func withUsername(ctx context.Context, username string) context.Context {
 
 func withEmail(ctx context.Context, email string) context.Context {
 	return context.WithValue(ctx, emailKey, email)
+}
+
+func withDocumentID(ctx context.Context, documentID string) context.Context {
+	return context.WithValue(ctx, documentIDKey, documentID)
+}
+
+func withPermission(ctx context.Context, permission string) context.Context {
+	return context.WithValue(ctx, permissionKey, permission)
 }
 
 // ValidateToken validates a JWT token and returns the user ID
@@ -149,6 +166,22 @@ func GetUsername(ctx context.Context) string {
 func GetEmail(ctx context.Context) string {
 	if email, ok := ctx.Value(emailKey).(string); ok {
 		return email
+	}
+	return ""
+}
+
+// GetDocumentID retrieves document ID from context (for guest tokens)
+func GetDocumentID(ctx context.Context) string {
+	if docID, ok := ctx.Value(documentIDKey).(string); ok {
+		return docID
+	}
+	return ""
+}
+
+// GetPermission retrieves permission from context (for guest tokens)
+func GetPermission(ctx context.Context) string {
+	if perm, ok := ctx.Value(permissionKey).(string); ok {
+		return perm
 	}
 	return ""
 }

@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	"collaborative-editor/internal/auth"
 	"collaborative-editor/internal/errors"
-	"collaborative-editor/internal/middleware"
 	"collaborative-editor/internal/repository"
 	"collaborative-editor/internal/services"
 	ws "collaborative-editor/internal/websocket"
@@ -65,29 +65,48 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Validate token and get user ID
-	userID, err := middleware.ValidateToken(token)
+	// Validate token
+	claims, err := auth.ValidateToken(token)
 	if err != nil {
 		http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
 		return
 	}
 
-	// Get user details
-	user, err := h.userRepo.GetByID(r.Context(), userID)
-	if err != nil {
-		http.Error(w, "User not found", http.StatusUnauthorized)
-		return
-	}
+	userID := claims.UserID
+	username := claims.Username
+	email := claims.Email
 
-	// Verify user has access to the document
-	_, err = h.docService.GetDocument(r.Context(), userID, documentID)
-	if err != nil {
-		if appErr, ok := err.(*errors.AppError); ok && appErr.Code == errors.ErrForbidden.Code {
-			http.Error(w, "Access denied to this document", http.StatusForbidden)
+	// Check if this is a guest user
+	if strings.HasPrefix(userID, "guest-") {
+		// Verify guest has access to THIS document
+		if claims.DocumentID != documentID {
+			http.Error(w, "Token is not for this document", http.StatusForbidden)
 			return
 		}
-		http.Error(w, "Document not found", http.StatusNotFound)
-		return
+
+		// Guests are allowed if token is valid
+		log.Printf("Guest access granted for document %s, permission: %s", documentID, claims.Permission)
+	} else {
+		// Regular user - verify against database
+		user, err := h.userRepo.GetByID(r.Context(), userID)
+		if err != nil {
+			http.Error(w, "User not found", http.StatusUnauthorized)
+			return
+		}
+		// Update details from DB (source of truth)
+		username = user.Username
+		email = user.Email
+
+		// Verify user has access to the document via service
+		_, err = h.docService.GetDocument(r.Context(), userID, documentID)
+		if err != nil {
+			if appErr, ok := err.(*errors.AppError); ok && appErr.Code == errors.ErrForbidden.Code {
+				http.Error(w, "Access denied to this document", http.StatusForbidden)
+				return
+			}
+			http.Error(w, "Document not found", http.StatusNotFound)
+			return
+		}
 	}
 
 	// Upgrade HTTP connection to WebSocket
@@ -97,12 +116,11 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Create client
 	client := &ws.Client{
 		ID:         uuid.New().String(),
-		UserID:     user.ID,
-		Username:   user.Username,
-		Email:      user.Email,
+		UserID:     userID,
+		Username:   username,
+		Email:      email,
 		DocumentID: documentID,
 		Conn:       conn,
 		Send:       make(chan []byte, 256),
@@ -117,5 +135,5 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 	go client.ReadPump()
 
 	log.Printf("WebSocket connection established for user %s (%s) on document %s",
-		user.Username, user.ID, documentID)
+		username, userID, documentID)
 }

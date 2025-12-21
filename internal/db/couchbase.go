@@ -88,6 +88,11 @@ func Connect() error {
 		return fmt.Errorf("failed to setup documents scope and collection: %w", err)
 	}
 
+	// Ensure shared_links scope and collection exist
+	if err := ensureScopeAndCollection("shared_links", "shared_links"); err != nil {
+		return fmt.Errorf("failed to setup shared_links scope and collection: %w", err)
+	}
+
 	log.Printf("Successfully connected to Couchbase bucket: %s", bucketName)
 	return nil
 }
@@ -281,6 +286,17 @@ func GetDocumentsScope() *gocb.Scope {
 func GetDocumentsCollection() *gocb.Collection {
 	scope := bucket.Scope("documents")
 	return scope.Collection("documents")
+}
+
+// GetSharedLinksScope returns the shared_links scope
+func GetSharedLinksScope() *gocb.Scope {
+	return bucket.Scope("shared_links")
+}
+
+// GetSharedLinksCollection returns the shared_links collection from the shared_links scope
+func GetSharedLinksCollection() *gocb.Collection {
+	scope := bucket.Scope("shared_links")
+	return scope.Collection("shared_links")
 }
 
 // GetBucketName returns the bucket name

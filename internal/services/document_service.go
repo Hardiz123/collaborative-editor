@@ -4,24 +4,32 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
+	"collaborative-editor/internal/auth"
 	"collaborative-editor/internal/errors"
+	"collaborative-editor/internal/middleware"
 	"collaborative-editor/internal/repository"
 	"collaborative-editor/pkg/document"
+	"collaborative-editor/pkg/sharedlink"
+
+	"github.com/google/uuid"
 )
 
 // DocumentService handles document-related business logic
 type DocumentService struct {
 	docRepo  repository.DocumentRepository
 	userRepo repository.UserRepository
+	linkRepo repository.SharedLinkRepository
 }
 
 // NewDocumentService creates a new document service
-func NewDocumentService(docRepo repository.DocumentRepository, userRepo repository.UserRepository) *DocumentService {
+func NewDocumentService(docRepo repository.DocumentRepository, userRepo repository.UserRepository, linkRepo repository.SharedLinkRepository) *DocumentService {
 	return &DocumentService{
 		docRepo:  docRepo,
 		userRepo: userRepo,
+		linkRepo: linkRepo,
 	}
 }
 
@@ -47,6 +55,27 @@ type DocumentResponse struct {
 	UpdatedAt       time.Time `json:"updated_at"`
 }
 
+// CreateSharedLinkRequest represents a request to create a shared link
+type CreateSharedLinkRequest struct {
+	Permission string `json:"permission"` // "read", "edit"
+}
+
+// SharedLinkResponse represents a shared link response
+type SharedLinkResponse struct {
+	ID         string    `json:"id"`
+	DocumentID string    `json:"document_id"`
+	Permission string    `json:"permission"`
+	ExpiresAt  time.Time `json:"expires_at"`
+	URL        string    `json:"url"` // Full URL to frontend
+}
+
+// AccessSharedLinkResponse represents response for accessing a shared link
+type AccessSharedLinkResponse struct {
+	AccessToken string `json:"access_token"`
+	DocumentID  string `json:"document_id"`
+	Permission  string `json:"permission"`
+}
+
 // CreateDocument creates a new document
 func (s *DocumentService) CreateDocument(ctx context.Context, userID string, req *CreateDocumentRequest) (*DocumentResponse, error) {
 	if req.Title == "" {
@@ -69,7 +98,7 @@ func (s *DocumentService) GetDocument(ctx context.Context, userID, docID string)
 		return nil, errors.WrapError(errors.ErrInternalServer, err)
 	}
 
-	if !s.hasAccess(doc, userID) {
+	if !s.checkAccess(ctx, doc, userID, false) {
 		return nil, errors.NewAppError(errors.ErrForbidden.Code, "Access denied", nil)
 	}
 
@@ -83,7 +112,7 @@ func (s *DocumentService) UpdateDocument(ctx context.Context, userID, docID stri
 		return nil, errors.WrapError(errors.ErrInternalServer, err)
 	}
 
-	if !s.hasAccess(doc, userID) {
+	if !s.checkAccess(ctx, doc, userID, true) {
 		return nil, errors.NewAppError(errors.ErrForbidden.Code, "Access denied", nil)
 	}
 
@@ -176,8 +205,91 @@ func (s *DocumentService) ListDocuments(ctx context.Context, userID string) ([]*
 	return responses, nil
 }
 
+// CreateSharedLink creates a shareable link for a document
+func (s *DocumentService) CreateSharedLink(ctx context.Context, userID, docID string, req *CreateSharedLinkRequest) (*SharedLinkResponse, error) {
+	// Verify document exists and user is owner
+	doc, err := s.docRepo.GetByID(ctx, docID)
+	if err != nil {
+		return nil, errors.WrapError(errors.ErrInternalServer, err)
+	}
+
+	if doc.OwnerID != userID {
+		return nil, errors.NewAppError(errors.ErrForbidden.Code, "Only owner can share document", nil)
+	}
+
+	// Validate permission
+	if req.Permission != "read" && req.Permission != "edit" {
+		return nil, errors.NewAppError(errors.ErrInvalidInput.Code, "Invalid permission. Must be 'read' or 'edit'", nil)
+	}
+
+	// Create link
+	id := uuid.New().String()
+	// Default expiration: 7 days
+	expiresAt := time.Now().Add(7 * 24 * time.Hour)
+
+	link := sharedlink.NewSharedLink(id, docID, req.Permission, expiresAt)
+
+	if err := s.linkRepo.Create(ctx, link); err != nil {
+		return nil, errors.WrapError(errors.ErrInternalServer, fmt.Errorf("failed to create shared link: %w", err))
+	}
+
+	// Construct URL (In production this should be from config)
+	url := fmt.Sprintf("/shared/%s", id)
+
+	return &SharedLinkResponse{
+		ID:         link.ID,
+		DocumentID: link.DocumentID,
+		Permission: link.Permission,
+		ExpiresAt:  link.ExpiresAt,
+		URL:        url,
+	}, nil
+}
+
+// AccessSharedLink validates a shared link and returns an access token
+func (s *DocumentService) AccessSharedLink(ctx context.Context, linkID string) (*AccessSharedLinkResponse, error) {
+	link, err := s.linkRepo.GetByID(ctx, linkID)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrNotFound.Code, "Shared link not found", nil)
+	}
+
+	// Check expiration
+	if time.Now().After(link.ExpiresAt) {
+		return nil, errors.NewAppError(errors.ErrForbidden.Code, "Shared link has expired", nil)
+	}
+
+	// Generate Guest Token
+	guestID := "guest-" + uuid.New().String()
+	token, err := auth.GenerateGuestToken(guestID, "Guest User", link.DocumentID, link.Permission)
+	if err != nil {
+		return nil, errors.WrapError(errors.ErrInternalServer, fmt.Errorf("failed to generate guest token: %w", err))
+	}
+
+	return &AccessSharedLinkResponse{
+		AccessToken: token,
+		DocumentID:  link.DocumentID,
+		Permission:  link.Permission,
+	}, nil
+}
+
 // Helper: check access
-func (s *DocumentService) hasAccess(doc *document.Document, userID string) bool {
+func (s *DocumentService) checkAccess(ctx context.Context, doc *document.Document, userID string, requireEdit bool) bool {
+	// Guest Access
+	if strings.HasPrefix(userID, "guest-") {
+		tokenDocID := middleware.GetDocumentID(ctx)
+		tokenPerm := middleware.GetPermission(ctx)
+
+		if tokenDocID != doc.ID {
+			return false
+		}
+
+		if requireEdit && tokenPerm != "edit" {
+			return false
+		}
+
+		return tokenPerm == "read" || tokenPerm == "edit"
+	}
+
+	// Standard User Access
 	if doc.OwnerID == userID {
 		return true
 	}

@@ -15,9 +15,11 @@ var (
 
 // Claims represents JWT claims
 type Claims struct {
-	UserID   string `json:"user_id"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
+	UserID     string `json:"user_id"`
+	Username   string `json:"username"`
+	Email      string `json:"email"`
+	DocumentID string `json:"document_id,omitempty"`
+	Permission string `json:"permission,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -55,6 +57,34 @@ func GenerateToken(userID, username, email string) (string, error) {
 	tokenString, err := token.SignedString(jwtSecret)
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %w", err)
+	}
+
+	return tokenString, nil
+}
+
+// GenerateGuestToken generates a JWT token for a guest user with specific document access
+func GenerateGuestToken(userID, username, documentID, permission string) (string, error) {
+	// Guest tokens expire in 24 hours (can be shorter)
+	expirationTime := time.Now().Add(24 * time.Hour)
+
+	claims := &Claims{
+		UserID:     userID,
+		Username:   username,
+		DocumentID: documentID,
+		Permission: permission,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer:    "collaborative-editor",
+			Subject:   userID,
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(jwtSecret)
+	if err != nil {
+		return "", fmt.Errorf("failed to sign guest token: %w", err)
 	}
 
 	return tokenString, nil

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Share2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Share2, Loader2, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import TiptapEditor from '@/components/editor/TiptapEditor';
@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { getDocument, updateDocument } from '@/services/documents';
 import { CollaboratorModal } from '@/components/ui/collaborator-modal';
+import { ShareLinkModal } from '@/components/ui/share-link-modal';
 import { CollaboratorAvatars } from '@/components/CollaboratorAvatars';
 import { useDocumentWebSocket } from '@/hooks/useDocumentWebSocket';
 import { useYjsProvider } from '@/hooks/useYjsProvider';
@@ -20,7 +21,8 @@ const EditorPage = () => {
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [isInitialLoad, setIsInitialLoad] = useState(true);
-    const [showShareModal, setShowShareModal] = useState(false);
+    const [showInviteModal, setShowInviteModal] = useState(false);
+    const [showLinkModal, setShowLinkModal] = useState(false);
 
     // Fetch document
     const { data: document, isLoading } = useQuery({
@@ -197,8 +199,17 @@ const EditorPage = () => {
                     <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => setShowShareModal(true)}
+                        onClick={() => setShowInviteModal(true)}
                         className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+                    >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Invite
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setShowLinkModal(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white border-none"
                     >
                         <Share2 className="h-4 w-4 mr-2" />
                         Share
@@ -213,11 +224,11 @@ const EditorPage = () => {
                 transition={{ delay: 0.1 }}
                 className="w-full max-w-5xl flex items-center gap-4"
             >
-                <CollaboratorAvatars 
-                    collaborators={collaborators} 
+                <CollaboratorAvatars
+                    collaborators={collaborators}
                     currentUser={currentUser}
                     currentUserId={user?.userID || tokenUser?.userID}
-                    maxDisplay={5} 
+                    maxDisplay={5}
                 />
                 {isConnected && (
                     <span className="text-xs text-green-400 flex items-center gap-1">
@@ -254,8 +265,13 @@ const EditorPage = () => {
 
             <CollaboratorModal
                 documentId={id!}
-                open={showShareModal}
-                onOpenChange={setShowShareModal}
+                open={showInviteModal}
+                onOpenChange={setShowInviteModal}
+            />
+            <ShareLinkModal
+                documentId={id!}
+                open={showLinkModal}
+                onOpenChange={setShowLinkModal}
             />
         </div>
     );

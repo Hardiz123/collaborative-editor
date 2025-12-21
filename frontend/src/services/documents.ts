@@ -19,6 +19,20 @@ export interface AddCollaboratorRequest {
   email: string;
 }
 
+export interface SharedLinkResponse {
+  id: string;
+  document_id: string;
+  permission: string;
+  expires_at: string;
+  url: string;
+}
+
+export interface AccessSharedLinkResponse {
+  access_token: string;
+  document_id: string;
+  permission: string;
+}
+
 export const createDocument = async (data: CreateDocumentRequest) => {
   const response = await api.post<Document>('/documents', data);
   return response.data;
@@ -45,5 +59,15 @@ export const deleteDocument = async (id: string) => {
 
 export const addCollaborator = async (id: string, email: string) => {
   const response = await api.post<Document>(`/documents/${id}/collaborators`, { email });
+  return response.data;
+};
+
+export const createSharedLink = async (id: string, permission: 'read' | 'edit') => {
+  const response = await api.post<SharedLinkResponse>(`/documents/${id}/share`, { permission });
+  return response.data;
+};
+
+export const accessSharedLink = async (linkId: string) => {
+  const response = await api.get<AccessSharedLinkResponse>(`/shared/${linkId}/access`);
   return response.data;
 };

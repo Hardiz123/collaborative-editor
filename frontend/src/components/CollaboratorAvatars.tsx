@@ -53,14 +53,14 @@ export function CollaboratorAvatars({ collaborators, currentUser, currentUserId,
     // Ensure current user is included in the list
     const allCollaborators = useMemo(() => {
         if (!currentUser || !currentUserId) return collaborators;
-        
+
         // Check if current user is already in the list
         const isCurrentUserInList = collaborators.some(c => c.userId === currentUserId);
-        
+
         if (isCurrentUserInList) {
             return collaborators;
         }
-        
+
         // Add current user to the list
         return [
             {
@@ -72,13 +72,13 @@ export function CollaboratorAvatars({ collaborators, currentUser, currentUserId,
             ...collaborators,
         ];
     }, [collaborators, currentUser, currentUserId]);
-    
+
     const displayedCollaborators = allCollaborators.slice(0, maxDisplay);
     const overflowCount = Math.max(0, allCollaborators.length - maxDisplay);
 
     return (
         <div className="flex items-center gap-2">
-            <span className="text-sm text-white/60 font-medium">Active:</span>
+            <span className="text-sm text-muted-foreground font-medium">Active:</span>
             <div className="flex -space-x-2">
                 <AnimatePresence>
                     {displayedCollaborators.map((collaborator) => (

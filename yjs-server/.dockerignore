@@ -1,0 +1,21 @@
+# Node modules (will be installed during build)
+node_modules/
+
+# Environment files
+.env
+.env.*
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode/
+.cursor/
+
+# Documentation
+*.md
+
+# Misc
+.DS_Store
+railway.json

@@ -1,0 +1,34 @@
+# Git
+.git
+.gitignore
+
+# Environment files
+.env
+.env.*
+
+# Build artifacts
+server
+tmp/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE
+.vscode/
+.cursor/
+.idea/
+
+# Frontend
+frontend/
+yjs-server/
+
+# Documentation
+*.md
+!README.md
+
+# Misc
+.DS_Store
+.air.toml
+deploy-gcp.sh
+runserver.sh

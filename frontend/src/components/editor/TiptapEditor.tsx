@@ -35,7 +35,7 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentC
                     }
                 });
             }
-            
+
             // Handle provider sync event
             if (provider) {
                 provider.on('sync', (isSynced: boolean) => {
@@ -81,7 +81,7 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentC
         editable,
         editorProps: {
             attributes: {
-                class: 'prose prose-invert max-w-none focus:outline-none min-h-[500px] p-4 text-white',
+                class: 'prose dark:prose-invert max-w-none focus:outline-none min-h-[500px] p-4',
             },
         },
     }, [provider, ydoc, currentUser]);
@@ -148,10 +148,10 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentC
 
             // Get all awareness states (all connected users)
             const awarenessStates = provider.awareness.getStates();
-            
+
             // Find all label elements (we'll find carets through labels)
             const allLabels = document.querySelectorAll('.collaboration-carets__label, .collaboration-caret__label, .collaboration-cursor__label');
-            
+
             // For each user, find their caret and set the color
             awarenessStates.forEach((state) => {
                 const user = state.user;
@@ -163,11 +163,11 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentC
                     if (label.textContent === user.name) {
                         // Find the associated caret element
                         const caret = label.parentElement?.querySelector('.collaboration-carets, .collaboration-carets__caret, .collaboration-caret, .collaboration-cursor__caret') as HTMLElement;
-                        
+
                         if (caret) {
                             caret.style.setProperty('--caret-color', user.color);
                         }
-                        
+
                         // Set color on label
                         label.style.setProperty('--caret-color', user.color);
                         label.style.backgroundColor = user.color;
@@ -185,7 +185,7 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentC
 
         // Initial update
         const timer = setTimeout(updateCaretColors, 500);
-        
+
         // Also update when provider syncs
         provider.on('sync', (isSynced: boolean) => {
             if (isSynced) {
@@ -197,7 +197,7 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentC
         // Only set up observer if editor view is available
         let observer: MutationObserver | null = null;
         let viewCheckInterval: NodeJS.Timeout | null = null;
-        
+
         const setupObserver = () => {
             // Check if editor view is available before accessing dom
             if (editor.view && 'dom' in editor.view && editor.view.dom) {
@@ -224,7 +224,7 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentC
                     }
                 }
             }, 100);
-            
+
             // Cleanup interval after 5 seconds if view never becomes available
             setTimeout(() => {
                 if (viewCheckInterval) {
@@ -286,7 +286,7 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentC
     }
 
     return (
-        <div className="w-full flex flex-col rounded-xl overflow-hidden border border-white/20 bg-white/5 backdrop-blur-sm shadow-xl">
+        <div className="w-full flex flex-col rounded-xl overflow-hidden border border-border bg-card shadow-lg">
             <EditorToolbar editor={editor} />
             <div className="flex-1 overflow-y-auto max-h-[calc(100vh-200px)]">
                 <EditorContent editor={editor} />

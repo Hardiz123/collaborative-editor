@@ -28,7 +28,6 @@ export function ShareLinkModal({ open, onOpenChange, documentId }: ShareLinkModa
     const mutation = useMutation({
         mutationFn: () => createSharedLink(documentId, permission),
         onSuccess: (data) => {
-            // Construct full URL
             const baseUrl = window.location.origin;
             const fullUrl = `${baseUrl}/shared/${data.id}`;
             setGeneratedLink(fullUrl);
@@ -57,10 +56,10 @@ export function ShareLinkModal({ open, onOpenChange, documentId }: ShareLinkModa
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[425px] bg-zinc-900 text-white border-zinc-800">
+            <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>Share Document</DialogTitle>
-                    <DialogDescription className="text-zinc-400">
+                    <DialogDescription>
                         Generate a link to share this document with others.
                     </DialogDescription>
                 </DialogHeader>
@@ -71,28 +70,28 @@ export function ShareLinkModal({ open, onOpenChange, documentId }: ShareLinkModa
                             <div className="flex gap-4">
                                 <Button
                                     type="button"
-                                    variant={permission === 'read' ? 'secondary' : 'outline'}
+                                    variant={permission === 'read' ? 'default' : 'outline'}
                                     onClick={() => setPermission('read')}
-                                    className={`flex-1 ${permission === 'read' ? 'bg-zinc-700' : 'bg-transparent border-zinc-700 text-zinc-400'}`}
+                                    className="flex-1"
                                 >
                                     Read Only
                                 </Button>
                                 <Button
                                     type="button"
-                                    variant={permission === 'edit' ? 'secondary' : 'outline'}
+                                    variant={permission === 'edit' ? 'default' : 'outline'}
                                     onClick={() => setPermission('edit')}
-                                    className={`flex-1 ${permission === 'edit' ? 'bg-zinc-700' : 'bg-transparent border-zinc-700 text-zinc-400'}`}
+                                    className="flex-1"
                                 >
                                     Can Edit
                                 </Button>
                             </div>
 
-                            {error && <p className="text-red-400 text-sm">{error}</p>}
+                            {error && <p className="text-destructive text-sm">{error}</p>}
 
                             <Button
                                 onClick={handleCreateLink}
                                 disabled={mutation.isPending}
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                                className="w-full"
                             >
                                 {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Generate Link
@@ -104,17 +103,17 @@ export function ShareLinkModal({ open, onOpenChange, documentId }: ShareLinkModa
                                 <Input
                                     readOnly
                                     value={generatedLink}
-                                    className="bg-zinc-800 border-zinc-700 text-white select-all"
+                                    className="select-all"
                                 />
                                 <Button
                                     size="icon"
+                                    variant="outline"
                                     onClick={handleCopy}
-                                    className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700"
                                 >
-                                    {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4 text-white" />}
+                                    {copied ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : <Copy className="h-4 w-4" />}
                                 </Button>
                             </div>
-                            <p className="text-sm text-zinc-400 text-center">
+                            <p className="text-sm text-muted-foreground text-center">
                                 Anyone with this link can {permission === 'edit' ? 'edit' : 'view'} this document.
                             </p>
                         </div>
@@ -122,7 +121,7 @@ export function ShareLinkModal({ open, onOpenChange, documentId }: ShareLinkModa
                 </div>
 
                 <DialogFooter>
-                    <Button type="button" variant="ghost" onClick={handleClose} className="text-white hover:bg-zinc-800">
+                    <Button type="button" variant="outline" onClick={handleClose}>
                         Close
                     </Button>
                 </DialogFooter>

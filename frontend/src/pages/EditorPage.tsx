@@ -13,6 +13,7 @@ import { CollaboratorAvatars } from '@/components/CollaboratorAvatars';
 import { useDocumentWebSocket } from '@/hooks/useDocumentWebSocket';
 import { useYjsProvider } from '@/hooks/useYjsProvider';
 import { useAuth } from '@/context/AuthContext';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 const EditorPage = () => {
     const { id } = useParams<{ id: string }>();
@@ -83,8 +84,6 @@ const EditorPage = () => {
 
     const { ydoc, provider, synced } = useYjsProvider({
         documentId: id!,
-        // Enable collaboration as soon as the document is loaded.
-        // We allow anonymous fallback so cursors still appear even if the token is missing.
         enabled: !!id && !!document,
         username: currentUser.name,
         userColor: currentUser.color,
@@ -96,7 +95,6 @@ const EditorPage = () => {
             setTitle(document.title);
             setContent(document.content || '');
             setIsInitialLoad(true);
-            // Mark initial load as complete after a short delay to avoid saving on mount
             const timer = setTimeout(() => {
                 setIsInitialLoad(false);
             }, 1000);
@@ -133,7 +131,7 @@ const EditorPage = () => {
         const timer = setTimeout(() => {
             console.log('Saving content (length):', content.length);
             contentMutation.mutate(content);
-        }, 2000); // Slightly longer delay for content to reduce API calls
+        }, 2000);
 
         return () => clearTimeout(timer);
     }, [content, document, isInitialLoad]);
@@ -142,19 +140,9 @@ const EditorPage = () => {
         setTitle(e.target.value);
     };
 
-    // Debug logging
-    console.log('EditorPage state:', {
-        isLoading,
-        hasDocument: !!document,
-        hasUser: !!user,
-        userId: user?.userID,
-        username: user?.username,
-        provider: !!provider
-    });
-
     if (isLoading) {
         return (
-            <div className="h-screen w-full flex items-center justify-center bg-zinc-950 text-white">
+            <div className="h-screen w-full flex items-center justify-center bg-background">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         );
@@ -172,48 +160,46 @@ const EditorPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => navigate('/dashboard')}
-                        className="text-white hover:bg-white/10"
                     >
-                        <ArrowLeft className="h-6 w-6" />
+                        <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <Input
                         value={title}
                         onChange={handleTitleChange}
-                        className="bg-transparent border-none text-2xl font-bold text-white focus-visible:ring-0 px-0 h-auto placeholder:text-white/50"
+                        className="bg-transparent border-none text-2xl font-bold focus-visible:ring-0 px-0 h-auto"
                         placeholder="Untitled Document"
                     />
                 </div>
-                <div className="flex items-center gap-4">
-                    <div className="text-white/60 text-sm flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                    <div className="text-muted-foreground text-sm flex items-center gap-2">
                         {(titleMutation.isPending || contentMutation.isPending) ? (
-                            <span className="flex items-center gap-2 animate-pulse">
+                            <span className="flex items-center gap-2">
                                 <Loader2 className="h-3 w-3 animate-spin" />
                                 Saving...
                             </span>
                         ) : synced ? (
-                            <span className="text-green-400">✓ Synced</span>
+                            <span className="text-green-600 dark:text-green-400">✓ Synced</span>
                         ) : (
-                            <span className="animate-pulse">Syncing...</span>
+                            <span>Syncing...</span>
                         )}
                     </div>
                     <Button
-                        variant="secondary"
+                        variant="outline"
                         size="sm"
                         onClick={() => setShowInviteModal(true)}
-                        className="bg-white/10 hover:bg-white/20 text-white border-white/20"
                     >
                         <UserPlus className="h-4 w-4 mr-2" />
                         Invite
                     </Button>
                     <Button
-                        variant="secondary"
+                        variant="default"
                         size="sm"
                         onClick={() => setShowLinkModal(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white border-none"
                     >
                         <Share2 className="h-4 w-4 mr-2" />
                         Share
                     </Button>
+                    <ThemeToggle />
                 </div>
             </motion.div>
 
@@ -231,8 +217,8 @@ const EditorPage = () => {
                     maxDisplay={5}
                 />
                 {isConnected && (
-                    <span className="text-xs text-green-400 flex items-center gap-1">
-                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                    <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                        <span className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full animate-pulse"></span>
                         Live
                     </span>
                 )}
@@ -256,7 +242,7 @@ const EditorPage = () => {
                         }}
                     />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center text-white/60">
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                         <Loader2 className="h-6 w-6 animate-spin mr-2" />
                         Connecting to collaboration server...
                     </div>

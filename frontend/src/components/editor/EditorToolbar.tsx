@@ -81,16 +81,16 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
     };
 
     return (
-        <div className="border border-white/20 bg-white/10 backdrop-blur-md rounded-t-xl p-2 flex flex-wrap gap-1 items-center sticky top-0 z-10">
+        <div className="border-b border-border bg-muted/50 p-2 flex flex-wrap gap-1 items-center sticky top-0 z-10">
             <TooltipProvider>
-                <div className="flex items-center gap-1 border-r border-white/20 pr-2 mr-1">
+                <div className="flex items-center gap-1 border-r border-border pr-2 mr-1">
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Toggle
                                 size="sm"
                                 pressed={editor.isActive('bold')}
                                 onPressedChange={() => editor.chain().focus().toggleBold().run()}
-                                className="data-[state=on]:bg-yellow-400 data-[state=on]:text-black hover:bg-white/10 text-white transition-colors"
+                                className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
                             >
                                 <Bold className="h-4 w-4" />
                             </Toggle>
@@ -104,7 +104,7 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
                                 size="sm"
                                 pressed={editor.isActive('italic')}
                                 onPressedChange={() => editor.chain().focus().toggleItalic().run()}
-                                className="data-[state=on]:bg-yellow-400 data-[state=on]:text-black hover:bg-white/10 text-white transition-colors"
+                                className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
                             >
                                 <Italic className="h-4 w-4" />
                             </Toggle>
@@ -118,7 +118,7 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
                                 size="sm"
                                 pressed={editor.isActive('underline')}
                                 onPressedChange={() => editor.chain().focus().toggleUnderline().run()}
-                                className="data-[state=on]:bg-yellow-400 data-[state=on]:text-black hover:bg-white/10 text-white transition-colors"
+                                className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
                             >
                                 <Underline className="h-4 w-4" />
                             </Toggle>
@@ -132,7 +132,7 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
                                 size="sm"
                                 pressed={editor.isActive('strike')}
                                 onPressedChange={() => editor.chain().focus().toggleStrike().run()}
-                                className="data-[state=on]:bg-yellow-400 data-[state=on]:text-black hover:bg-white/10 text-white transition-colors"
+                                className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
                             >
                                 <Strikethrough className="h-4 w-4" />
                             </Toggle>
@@ -141,14 +141,14 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
                     </Tooltip>
                 </div>
 
-                <div className="flex items-center gap-1 border-r border-white/20 pr-2 mr-1">
+                <div className="flex items-center gap-1 border-r border-border pr-2 mr-1">
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Toggle
                                 size="sm"
                                 pressed={editor.isActive({ textAlign: 'left' })}
                                 onPressedChange={() => editor.chain().focus().setTextAlign('left').run()}
-                                className="data-[state=on]:bg-yellow-400 data-[state=on]:text-black hover:bg-white/10 text-white transition-colors"
+                                className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
                             >
                                 <AlignLeft className="h-4 w-4" />
                             </Toggle>
@@ -162,7 +162,7 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
                                 size="sm"
                                 pressed={editor.isActive({ textAlign: 'center' })}
                                 onPressedChange={() => editor.chain().focus().setTextAlign('center').run()}
-                                className="data-[state=on]:bg-yellow-400 data-[state=on]:text-black hover:bg-white/10 text-white transition-colors"
+                                className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
                             >
                                 <AlignCenter className="h-4 w-4" />
                             </Toggle>
@@ -176,7 +176,7 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
                                 size="sm"
                                 pressed={editor.isActive({ textAlign: 'right' })}
                                 onPressedChange={() => editor.chain().focus().setTextAlign('right').run()}
-                                className="data-[state=on]:bg-yellow-400 data-[state=on]:text-black hover:bg-white/10 text-white transition-colors"
+                                className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
                             >
                                 <AlignRight className="h-4 w-4" />
                             </Toggle>
@@ -185,14 +185,14 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
                     </Tooltip>
                 </div>
 
-                <div className="flex items-center gap-1 border-r border-white/20 pr-2 mr-1">
+                <div className="flex items-center gap-1 border-r border-border pr-2 mr-1">
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Toggle
                                 size="sm"
                                 pressed={editor.isActive('bulletList')}
                                 onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
-                                className="data-[state=on]:bg-yellow-400 data-[state=on]:text-black hover:bg-white/10 text-white transition-colors"
+                                className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
                             >
                                 <List className="h-4 w-4" />
                             </Toggle>
@@ -206,7 +206,7 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
                                 size="sm"
                                 pressed={editor.isActive('orderedList')}
                                 onPressedChange={() => editor.chain().focus().toggleOrderedList().run()}
-                                className="data-[state=on]:bg-yellow-400 data-[state=on]:text-black hover:bg-white/10 text-white transition-colors"
+                                className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
                             >
                                 <ListOrdered className="h-4 w-4" />
                             </Toggle>
@@ -215,14 +215,14 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
                     </Tooltip>
                 </div>
 
-                <div className="flex items-center gap-1 border-r border-white/20 pr-2 mr-1">
+                <div className="flex items-center gap-1 border-r border-border pr-2 mr-1">
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={setLink}
-                                className={editor.isActive('link') ? 'bg-yellow-400 text-black' : 'hover:bg-white/10 text-white transition-colors'}
+                                className={editor.isActive('link') ? 'bg-primary text-primary-foreground' : ''}
                             >
                                 <LinkIcon className="h-4 w-4" />
                             </Button>
@@ -236,7 +236,6 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={addImage}
-                                className="data-[state=on]:bg-yellow-400 data-[state=on]:text-black hover:bg-white/10 text-white transition-colors"
                             >
                                 <ImageIcon className="h-4 w-4" />
                             </Button>
@@ -250,7 +249,7 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
                                 size="sm"
                                 pressed={editor.isActive('blockquote')}
                                 onPressedChange={() => editor.chain().focus().toggleBlockquote().run()}
-                                className="data-[state=on]:bg-yellow-400 data-[state=on]:text-black hover:bg-white/10 text-white transition-colors"
+                                className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
                             >
                                 <Quote className="h-4 w-4" />
                             </Toggle>
@@ -267,7 +266,6 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
                                 size="sm"
                                 onClick={() => editor.chain().focus().undo().run()}
                                 disabled={!editor.can().chain().focus().undo().run()}
-                                className="hover:bg-white/10 text-white disabled:opacity-50"
                             >
                                 <Undo className="h-4 w-4" />
                             </Button>
@@ -282,7 +280,6 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
                                 size="sm"
                                 onClick={() => editor.chain().focus().redo().run()}
                                 disabled={!editor.can().chain().focus().redo().run()}
-                                className="hover:bg-white/10 text-white disabled:opacity-50"
                             >
                                 <Redo className="h-4 w-4" />
                             </Button>

@@ -30,7 +30,6 @@ export function CollaboratorModal({ open, onOpenChange, documentId }: Collaborat
             onOpenChange(false);
             setEmail('');
             setError('');
-            // Invalidate the document query to refresh collaborators list
             queryClient.invalidateQueries({ queryKey: ['document', documentId] });
             alert('Collaborator added successfully!');
         },
@@ -47,10 +46,10 @@ export function CollaboratorModal({ open, onOpenChange, documentId }: Collaborat
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px] bg-zinc-900 text-white border-zinc-800">
+            <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>Add Collaborator</DialogTitle>
-                    <DialogDescription className="text-zinc-400">
+                    <DialogDescription>
                         Enter the email address of the user you want to share this document with.
                     </DialogDescription>
                 </DialogHeader>
@@ -60,15 +59,14 @@ export function CollaboratorModal({ open, onOpenChange, documentId }: Collaborat
                             placeholder="user@example.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
                         />
-                        {error && <p className="text-red-400 text-sm">{error}</p>}
+                        {error && <p className="text-destructive text-sm">{error}</p>}
                     </div>
                     <DialogFooter>
-                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-white hover:bg-zinc-800">
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={mutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white">
+                        <Button type="submit" disabled={mutation.isPending}>
                             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Share
                         </Button>

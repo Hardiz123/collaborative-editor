@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { accessSharedLink } from '@/services/documents';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const SharedAccessPage = () => {
     const { id } = useParams<{ id: string }>();
@@ -13,19 +15,8 @@ const SharedAccessPage = () => {
             if (!id) return;
             try {
                 const data = await accessSharedLink(id);
-                // Store the guest token
                 localStorage.setItem('token', data.access_token);
-
-                // Force a reload or update auth context state to recognize the new token
-                // If AuthContext reads from localStorage on mount/update, we might need a way to trigger it.
-                // For now, let's try a hard navigation or just navigate.
-
-                // Use window.location.href to ensure a full reload and AuthContext re-initialization if needed
-                // Or if we can update context, do that.
-
-                // Navigate to the editor
                 navigate(`/editor/${data.document_id}`);
-                // Reload to ensure all sockets/contexts pick up the new token
                 window.location.reload();
             } catch (err: any) {
                 console.error("Access failed", err);
@@ -37,23 +28,29 @@ const SharedAccessPage = () => {
 
     if (error) {
         return (
-            <div className="h-screen w-full flex flex-col items-center justify-center bg-zinc-950 text-white gap-4">
-                <div className="text-red-500 text-xl font-bold">Access Denied</div>
-                <div className="text-zinc-400">{error}</div>
-                <button
-                    onClick={() => navigate('/')}
-                    className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition"
-                >
-                    Go Home
-                </button>
+            <div className="h-screen w-full flex flex-col items-center justify-center bg-background p-4">
+                <Card className="w-full max-w-md glass-panel">
+                    <CardHeader className="text-center">
+                        <div className="mx-auto w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center mb-2">
+                            <AlertCircle className="h-6 w-6 text-destructive" />
+                        </div>
+                        <CardTitle className="text-xl font-semibold">Access Denied</CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-center space-y-4">
+                        <p className="text-muted-foreground">{error}</p>
+                        <Button onClick={() => navigate('/')} variant="outline">
+                            Go to Dashboard
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
         );
     }
 
     return (
-        <div className="h-screen w-full flex flex-col items-center justify-center bg-zinc-950 text-white gap-4">
+        <div className="h-screen w-full flex flex-col items-center justify-center bg-background gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <div className="text-zinc-400">Accessing shared document...</div>
+            <p className="text-muted-foreground">Accessing shared document...</p>
         </div>
     );
 };

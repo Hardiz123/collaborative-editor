@@ -8,6 +8,7 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 const Login = () => {
     const [identifier, setIdentifier] = useState('');
@@ -29,21 +30,21 @@ const Login = () => {
 
     return (
         <div className="page-container">
+            <div className="absolute top-4 right-4">
+                <ThemeToggle />
+            </div>
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
             >
-                <Card className="w-[400px] glass-panel border-0 text-white shadow-2xl">
+                <Card className="w-[400px] glass-panel">
                     <CardHeader className="text-center space-y-2">
-                        <div className="mx-auto w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-2 animate-bounce-small">
-                            🚀
-                        </div>
-                        <CardTitle className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-yellow-300 to-orange-400">
-                            Welcome Back!
+                        <CardTitle className="text-3xl font-bold">
+                            Sign In
                         </CardTitle>
-                        <CardDescription className="text-gray-200 text-lg">
-                            Ready to jump back in?
+                        <CardDescription className="text-muted-foreground">
+                            Enter your credentials to access your account
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -53,11 +54,10 @@ const Login = () => {
                                 <Input
                                     id="identifier"
                                     type="text"
-                                    placeholder="Email or Username"
+                                    placeholder="Enter your email or username"
                                     value={identifier}
                                     onChange={(e) => setIdentifier(e.target.value)}
                                     required
-                                    className="bg-white/10 border-white/20 text-white placeholder:text-white/60 focus-visible:ring-primary"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -67,27 +67,33 @@ const Login = () => {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
-                                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus-visible:ring-primary"
                                 />
                             </div>
                             {error && (
-                                <div className="text-red-400 text-sm text-center">
+                                <div className="text-destructive text-sm text-center bg-destructive/10 p-3 rounded-md">
                                     {error.message}
                                 </div>
                             )}
                             <Button
                                 type="submit"
-                                className="w-full bg-gradient-to-r from-pink-500 to-violet-600 hover:from-pink-600 hover:to-violet-700 text-white font-bold py-2 rounded-xl transition-all transform hover:scale-105"
+                                className="w-full"
                                 disabled={isLoading}
                             >
-                                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Let's Go! 🚀"}
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Signing in...
+                                    </>
+                                ) : (
+                                    'Sign In'
+                                )}
                             </Button>
                         </form>
                     </CardContent>
                     <CardFooter className="justify-center">
-                        <p className="text-sm text-white/80 font-medium">
+                        <p className="text-sm text-muted-foreground">
                             Don't have an account?{' '}
-                            <Link to="/signup" className="text-yellow-300 hover:text-yellow-200 hover:underline font-bold">
+                            <Link to="/signup" className="text-primary hover:underline font-medium">
                                 Sign up
                             </Link>
                         </p>

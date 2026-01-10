@@ -8,6 +8,7 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 const Signup = () => {
     const [username, setUsername] = useState('');
@@ -30,21 +31,21 @@ const Signup = () => {
 
     return (
         <div className="page-container">
+            <div className="absolute top-4 right-4">
+                <ThemeToggle />
+            </div>
             <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5 }}
             >
-                <Card className="w-[400px] glass-panel border-0 text-white shadow-2xl">
+                <Card className="w-[400px] glass-panel">
                     <CardHeader className="text-center space-y-2">
-                        <div className="mx-auto w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-2 animate-bounce-small">
-                            ✨
-                        </div>
-                        <CardTitle className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 to-blue-400">
-                            Join the Party!
+                        <CardTitle className="text-3xl font-bold">
+                            Create Account
                         </CardTitle>
-                        <CardDescription className="text-gray-200 text-lg">
-                            Create your account to get started
+                        <CardDescription className="text-muted-foreground">
+                            Sign up to start collaborating
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -54,11 +55,10 @@ const Signup = () => {
                                 <Input
                                     id="username"
                                     type="text"
-                                    placeholder="John Doe"
+                                    placeholder="Enter your username"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     required
-                                    className="bg-white/10 border-white/20 text-white placeholder:text-white/60 focus-visible:ring-primary"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -66,11 +66,10 @@ const Signup = () => {
                                 <Input
                                     id="email"
                                     type="email"
-                                    placeholder="m@example.com"
+                                    placeholder="Enter your email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
-                                    className="bg-white/10 border-white/20 text-white placeholder:text-white/60 focus-visible:ring-primary"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -80,27 +79,33 @@ const Signup = () => {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
-                                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 focus-visible:ring-primary"
                                 />
                             </div>
                             {error && (
-                                <div className="text-red-400 text-sm text-center">
+                                <div className="text-destructive text-sm text-center bg-destructive/10 p-3 rounded-md">
                                     {error.message}
                                 </div>
                             )}
                             <Button
                                 type="submit"
-                                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold py-2 rounded-xl transition-all transform hover:scale-105"
+                                className="w-full"
                                 disabled={isLoading}
                             >
-                                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Sign Up Now! 🎉"}
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Creating account...
+                                    </>
+                                ) : (
+                                    'Create Account'
+                                )}
                             </Button>
                         </form>
                     </CardContent>
                     <CardFooter className="justify-center">
-                        <p className="text-sm text-white/80 font-medium">
+                        <p className="text-sm text-muted-foreground">
                             Already have an account?{' '}
-                            <Link to="/login" className="text-cyan-300 hover:text-cyan-200 hover:underline font-bold">
+                            <Link to="/login" className="text-primary hover:underline font-medium">
                                 Sign in
                             </Link>
                         </p>

@@ -19,9 +19,8 @@ tmp/
 .cursor/
 .idea/
 
-# Frontend
+# Frontend (not needed in backend deployment)
 frontend/
-yjs-server/
 
 # Documentation
 *.md

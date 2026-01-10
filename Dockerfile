@@ -1,5 +1,5 @@
-# Build stage
-FROM golang:1.24-alpine AS builder
+# Build stage for GO backend
+FROM golang:1.24-alpine AS go-builder
 
 # Install build dependencies
 RUN apk add --no-cache git
@@ -19,19 +19,34 @@ COPY . .
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o server ./cmd/server
 
-# Runtime stage
-FROM alpine:latest
+# Runtime stage - Combined GO + Node.js
+FROM node:20-alpine
 
-# Install ca-certificates for HTTPS
-RUN apk --no-cache add ca-certificates
+# Install supervisor and ca-certificates
+RUN apk add --no-cache supervisor ca-certificates
+
+# Create necessary directories
+RUN mkdir -p /var/log/supervisor /root/yjs-server
 
 WORKDIR /root/
 
-# Copy the binary from builder
-COPY --from=builder /app/server .
+# Copy GO binary from builder
+COPY --from=go-builder /app/server .
 
-# Expose port
-EXPOSE 8080
+# Copy YJS server files
+COPY yjs-server/package*.json ./yjs-server/
+COPY yjs-server/server.js ./yjs-server/
 
-# Run the binary
-CMD ["./server"]
+# Install YJS dependencies
+WORKDIR /root/yjs-server
+RUN npm ci --only=production
+
+# Copy supervisord configuration
+WORKDIR /root/
+COPY supervisord.conf /etc/supervisord.conf
+
+# Expose both ports
+EXPOSE 8080 8081
+
+# Run supervisord
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]

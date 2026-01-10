@@ -39,7 +39,7 @@ COPY yjs-server/server.js ./yjs-server/
 
 # Install YJS dependencies
 WORKDIR /root/yjs-server
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Copy supervisord configuration
 WORKDIR /root/

@@ -39,7 +39,7 @@ const EditorPage = () => {
     });
 
     // Parse JWT token once to get user info
-    const [tokenUser, setTokenUser] = useState<{ userID: string; username: string; email: string } | null>(null);
+    const [tokenUser, setTokenUser] = useState<{ userID: string; username: string; email: string; permission?: string } | null>(null);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -55,6 +55,7 @@ const EditorPage = () => {
                 userID: payload.user_id || payload.sub || '',
                 username: payload.username || '',
                 email: payload.email || '',
+                permission: payload.permission || 'edit', // 'read' or 'edit'
             };
             console.log('Extracted user data:', userData);
             setTokenUser(userData);
@@ -62,6 +63,9 @@ const EditorPage = () => {
             console.error('Failed to parse token:', error);
         }
     }, []);
+
+    // Derive read-only state from token permission ('read' = view only)
+    const isReadOnly = tokenUser?.permission === 'read';
 
     // Yjs for real-time text editing
     const getUserColor = (userId: string) => {
@@ -232,16 +236,25 @@ const EditorPage = () => {
                     >
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <Input
-                        value={title}
-                        onChange={handleTitleChange}
-                        className="bg-transparent border-none text-2xl font-bold focus-visible:ring-0 px-0 h-auto"
-                        placeholder="Untitled Document"
-                    />
+                    {isReadOnly ? (
+                        <span className="text-2xl font-bold px-0 truncate">{title}</span>
+                    ) : (
+                        <Input
+                            value={title}
+                            onChange={handleTitleChange}
+                            className="bg-transparent border-none text-2xl font-bold focus-visible:ring-0 px-0 h-auto"
+                            placeholder="Untitled Document"
+                        />
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="text-muted-foreground text-sm flex items-center gap-2">
-                        {(titleMutation.isPending || contentMutation.isPending) ? (
+                        {isReadOnly ? (
+                            <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium">
+                                <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                                View Only
+                            </span>
+                        ) : (titleMutation.isPending || contentMutation.isPending) ? (
                             <span className="flex items-center gap-2">
                                 <Loader2 className="h-3 w-3 animate-spin" />
                                 Saving...
@@ -252,22 +265,26 @@ const EditorPage = () => {
                             <span>Syncing...</span>
                         )}
                     </div>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowInviteModal(true)}
-                    >
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Invite
-                    </Button>
-                    <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => setShowLinkModal(true)}
-                    >
-                        <Share2 className="h-4 w-4 mr-2" />
-                        Share
-                    </Button>
+                    {!isReadOnly && (
+                        <>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowInviteModal(true)}
+                            >
+                                <UserPlus className="h-4 w-4 mr-2" />
+                                Invite
+                            </Button>
+                            <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => setShowLinkModal(true)}
+                            >
+                                <Share2 className="h-4 w-4 mr-2" />
+                                Share
+                            </Button>
+                        </>
+                    )}
                     <ThemeToggle />
                 </div>
             </motion.div>
@@ -306,8 +323,9 @@ const EditorPage = () => {
                         provider={provider}
                         currentUser={currentUser}
                         initialContent={document?.content}
+                        editable={!isReadOnly}
                         onContentChange={(newContent) => {
-                            setContent(newContent);
+                            if (!isReadOnly) setContent(newContent);
                         }}
                     />
                 ) : (

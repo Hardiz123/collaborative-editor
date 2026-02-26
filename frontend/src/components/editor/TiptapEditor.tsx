@@ -303,7 +303,7 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentC
 
     return (
         <div className="w-full flex flex-col rounded-xl overflow-hidden border border-border bg-card shadow-lg">
-            <EditorToolbar editor={editor} />
+            {editable && <EditorToolbar editor={editor} />}
             <div className="flex-1 overflow-y-auto max-h-[calc(100vh-200px)]">
                 <EditorContent editor={editor} />
             </div>

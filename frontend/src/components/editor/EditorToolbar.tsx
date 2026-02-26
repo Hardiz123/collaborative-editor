@@ -1,5 +1,5 @@
 import { type Editor } from '@tiptap/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     Bold,
     Italic,
@@ -54,11 +54,28 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
         return null;
     }
 
+    const imageInputRef = useRef<HTMLInputElement>(null);
+
     const addImage = () => {
-        const url = window.prompt('Enter the URL of the image:');
-        if (url) {
-            editor.chain().focus().setImage({ src: url }).run();
-        }
+        // Trigger the hidden file input
+        imageInputRef.current?.click();
+    };
+
+    const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const src = event.target?.result as string;
+            if (src) {
+                editor.chain().focus().setImage({ src }).run();
+            }
+        };
+        reader.readAsDataURL(file);
+
+        // Reset input so same file can be selected again
+        e.target.value = '';
     };
 
     const setLink = () => {
@@ -288,6 +305,15 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
                     </Tooltip>
                 </div>
             </TooltipProvider>
+
+            {/* Hidden file input for image upload */}
+            <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleImageFileChange}
+            />
         </div>
     );
 };

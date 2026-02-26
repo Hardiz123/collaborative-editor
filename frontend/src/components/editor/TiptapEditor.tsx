@@ -55,7 +55,9 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentC
                 // Disable undo/redo as Yjs handles it
                 undoRedo: false,
             }),
-            Image,
+            Image.configure({
+                allowBase64: true,
+            }),
             Link.configure({
                 openOnClick: false,
             }),

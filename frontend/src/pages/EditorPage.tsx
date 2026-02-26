@@ -146,7 +146,7 @@ const EditorPage = () => {
         const timer = setTimeout(() => {
             console.log('Saving title:', title);
             titleMutation.mutate(title);
-        }, 1000);
+        }, 300);
 
         return () => clearTimeout(timer);
     }, [title, document, isInitialLoad]);
@@ -163,7 +163,7 @@ const EditorPage = () => {
         const timer = setTimeout(() => {
             console.log('Saving content (length):', content.length);
             contentMutation.mutate(content);
-        }, 1500);
+        }, 300);
 
         return () => clearTimeout(timer);
     }, [content, document, isInitialLoad]);

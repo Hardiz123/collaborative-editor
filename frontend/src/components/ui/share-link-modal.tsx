@@ -45,7 +45,7 @@ export function ShareLinkModal({ open, onOpenChange, documentId }: ShareLinkModa
     const handleCopy = () => {
         navigator.clipboard.writeText(generatedLink);
         setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        setTimeout(() => setCopied(false), 500);
     };
 
     const handleClose = () => {

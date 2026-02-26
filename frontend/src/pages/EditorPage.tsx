@@ -156,10 +156,14 @@ const EditorPage = () => {
         if (!document || isInitialLoad) return;
         if (content === originalDocumentRef.current?.content) return;
 
+        // Never overwrite real content with empty/blank — transient Yjs state
+        const isEffectivelyEmpty = !content || content === '<p></p>';
+        if (isEffectivelyEmpty && originalDocumentRef.current?.content) return;
+
         const timer = setTimeout(() => {
             console.log('Saving content (length):', content.length);
             contentMutation.mutate(content);
-        }, 300);
+        }, 1500);
 
         return () => clearTimeout(timer);
     }, [content, document, isInitialLoad]);
@@ -174,6 +178,11 @@ const EditorPage = () => {
             const currentContent = contentRef.current;
             const originalTitle = originalDocumentRef.current.title;
             const originalContent = originalDocumentRef.current.content;
+
+            // Never overwrite real content with empty — happens when user
+            // navigates away before Yjs/onContentChange has populated contentRef.
+            const isEffectivelyEmpty = !currentContent || currentContent === '<p></p>';
+            if (isEffectivelyEmpty && originalContent) return;
 
             const hasTitleChanged = currentTitle !== originalTitle;
             const hasContentChanged = currentContent !== originalContent;

@@ -9,7 +9,7 @@ import Collaboration from '@tiptap/extension-collaboration';
 import CollaborationCaret from '@tiptap/extension-collaboration-caret';
 import Highlight from '@tiptap/extension-highlight';
 import EditorToolbar from './EditorToolbar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 
@@ -110,32 +110,43 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentC
         }
     }, [editor, currentUser, provider]);
 
-    // Initialize content from database if Yjs document is empty
+    // Track what content we last loaded from DB so we know if user has made edits
+    const initializedContentRef = useRef<string | null>(null);
+
+    // Initialize / re-initialize content from database
     useEffect(() => {
         if (!editor || !initialContent || !provider) return;
+        if (initialContent.trim() === '') return;
 
-        // Wait for sync to complete, then check if document is empty
-        const checkAndInitialize = () => {
-            if (provider.synced) {
-                const currentContent = editor.getHTML();
-                // Only set initial content if editor is empty and we have initial content
-                if ((!currentContent || currentContent === '<p></p>') && initialContent && initialContent.trim() !== '') {
-                    console.log('Initializing editor with content from database');
-                    // Set initial content (Yjs will sync it)
-                    editor.commands.setContent(initialContent);
-                }
+        const applyContent = () => {
+            const currentEditorHTML = editor.getHTML();
+            const isEditorEmpty = !currentEditorHTML || currentEditorHTML === '<p></p>';
+            const isShowingStaleInit = currentEditorHTML === initializedContentRef.current;
+
+            // Apply DB content if:
+            // 1. Editor is empty (e.g. Yjs server just started), OR
+            // 2. Editor still shows the old initialContent (React Query returned fresher data)
+            if (isEditorEmpty || isShowingStaleInit) {
+                console.log('Setting editor content from DB:', initialContent.substring(0, 60));
+                editor.commands.setContent(initialContent);
+                initializedContentRef.current = initialContent;
             }
         };
 
+        // Always register the sync listener FIRST, so we don't miss it
+        const handleSync = (isSynced: boolean) => {
+            if (isSynced) setTimeout(applyContent, 100);
+        };
+        provider.on('sync', handleSync);
+
+        // ALSO call immediately if provider is already synced (race condition safety)
         if (provider.synced) {
-            checkAndInitialize();
-        } else {
-            provider.on('sync', (isSynced: boolean) => {
-                if (isSynced) {
-                    setTimeout(checkAndInitialize, 200);
-                }
-            });
+            applyContent();
         }
+
+        return () => {
+            provider.off('sync', handleSync);
+        };
     }, [editor, provider, initialContent]);
 
     // Set --caret-color CSS variable on collaboration caret elements for each user
@@ -252,6 +263,9 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentC
 
         const handleUpdate = () => {
             const html = editor.getHTML();
+            // Don't report empty paragraph — this fires on first Yjs sync before
+            // DB content is loaded and would trigger an empty PUT request.
+            if (!html || html === '<p></p>') return;
             onContentChange(html);
         };
 

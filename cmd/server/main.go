@@ -41,7 +41,7 @@ func main() {
 	blacklistRepo := repository.NewCouchbaseTokenBlacklistRepository()
 	linkRepo := repository.NewCouchbaseSharedLinkRepository()
 
-	// Initialize service layer
+	// Initialize service layer 
 	userService := services.NewUserService(userRepo, blacklistRepo)
 	textService := services.NewTextService(textRepo)
 	docService := services.NewDocumentService(docRepo, userRepo, linkRepo)

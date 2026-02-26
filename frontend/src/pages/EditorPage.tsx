@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Share2, Loader2, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -89,32 +89,59 @@ const EditorPage = () => {
         userColor: currentUser.color,
     });
 
+    const titleRef = useRef(title);
+    const contentRef = useRef(content);
+    const originalDocumentRef = useRef<{ title: string; content: string } | null>(null);
+
+    // Keep refs in sync with state
+    useEffect(() => {
+        titleRef.current = title;
+    }, [title]);
+
+    useEffect(() => {
+        contentRef.current = content;
+    }, [content]);
+
     // Update title and content when document loads
     useEffect(() => {
         if (document) {
             setTitle(document.title);
             setContent(document.content || '');
+            originalDocumentRef.current = {
+                title: document.title,
+                content: document.content || ''
+            };
             setIsInitialLoad(true);
             const timer = setTimeout(() => {
                 setIsInitialLoad(false);
-            }, 1000);
+            }, 200);
             return () => clearTimeout(timer);
         }
     }, [document]);
 
-    // Title save mutation
+    // Save mutations
     const titleMutation = useMutation({
-        mutationFn: (newTitle: string) => updateDocument(id!, { title: newTitle, content: content }),
+        mutationFn: (newTitle: string) => updateDocument(id!, { title: newTitle, content: contentRef.current }),
+        onSuccess: (_, variables) => {
+            if (originalDocumentRef.current) {
+                originalDocumentRef.current.title = variables;
+            }
+        }
     });
 
-    // Content save mutation
     const contentMutation = useMutation({
-        mutationFn: (newContent: string) => updateDocument(id!, { title: title, content: newContent }),
+        mutationFn: (newContent: string) => updateDocument(id!, { title: titleRef.current, content: newContent }),
+        onSuccess: (_, variables) => {
+            if (originalDocumentRef.current) {
+                originalDocumentRef.current.content = variables;
+            }
+        }
     });
 
     // Debounced title save
     useEffect(() => {
-        if (!document || title === document.title || isInitialLoad) return;
+        if (!document || isInitialLoad) return;
+        if (title === originalDocumentRef.current?.title) return;
 
         const timer = setTimeout(() => {
             console.log('Saving title:', title);
@@ -126,15 +153,48 @@ const EditorPage = () => {
 
     // Debounced content save
     useEffect(() => {
-        if (!document || content === document.content || isInitialLoad) return;
+        if (!document || isInitialLoad) return;
+        if (content === originalDocumentRef.current?.content) return;
 
         const timer = setTimeout(() => {
             console.log('Saving content (length):', content.length);
             contentMutation.mutate(content);
-        }, 2000);
+        }, 300);
 
         return () => clearTimeout(timer);
     }, [content, document, isInitialLoad]);
+
+    // Save on unmount or exact back navigation
+    useEffect(() => {
+        return () => {
+            // This runs when component unmounts
+            if (!originalDocumentRef.current || !id) return;
+
+            const currentTitle = titleRef.current;
+            const currentContent = contentRef.current;
+            const originalTitle = originalDocumentRef.current.title;
+            const originalContent = originalDocumentRef.current.content;
+
+            const hasTitleChanged = currentTitle !== originalTitle;
+            const hasContentChanged = currentContent !== originalContent;
+
+            if (hasTitleChanged || hasContentChanged) {
+                console.log('Unmounting, saving pending changes synchronous-like...');
+                // Note: React Query's mutate is asynchronous, but we can do a fire-and-forget raw API call 
+                // to be safer during unmount, or just rely on the browser not killing the request immediately
+                updateDocument(id, {
+                    title: currentTitle,
+                    content: currentContent
+                }).catch(err => console.error('Failed to save on unmount', err));
+            }
+        };
+    }, [id]);
+
+    const handleGoBack = () => {
+        // We rely on the unmount effect to save data, 
+        // but we can also manually navigate
+        navigate('/dashboard');
+    };
 
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setTitle(e.target.value);
@@ -159,7 +219,7 @@ const EditorPage = () => {
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => navigate('/dashboard')}
+                        onClick={handleGoBack}
                     >
                         <ArrowLeft className="h-5 w-5" />
                     </Button>

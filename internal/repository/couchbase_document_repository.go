@@ -100,7 +100,7 @@ func (r *CouchbaseDocumentRepository) ListByUserID(ctx context.Context, userID s
 
 	scope := db.GetDocumentsScope()
 	rows, err := scope.Query(query, &gocb.QueryOptions{
-		PositionalParameters: []interface{}{userID},
+		PositionalParameters: []any{userID},
 		Context:              ctx,
 	})
 	if err != nil {

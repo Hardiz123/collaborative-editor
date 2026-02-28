@@ -94,7 +94,7 @@ func (r *CouchbaseDocumentRepository) Delete(ctx context.Context, id string) err
 // ListByUserID retrieves all documents where the user is an owner or collaborator
 func (r *CouchbaseDocumentRepository) ListByUserID(ctx context.Context, userID string) ([]*document.Document, error) {
 	query := fmt.Sprintf(
-		"SELECT d.* FROM `%s`.`documents`.`documents` d WHERE d.owner_id = $1 OR ARRAY_CONTAINS(d.collaborator_ids, $1)",
+		"SELECT d.* FROM `%s`.`documents`.`documents` d WHERE d.owner_id = $1 OR ARRAY_CONTAINS(d.collaborator_ids, $1) ORDER BY d.updated_at DESC",
 		db.GetBucketName(),
 	)
 

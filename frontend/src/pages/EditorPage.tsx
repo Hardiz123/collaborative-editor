@@ -14,6 +14,7 @@ import { useDocumentWebSocket } from '@/hooks/useDocumentWebSocket';
 import { useYjsProvider } from '@/hooks/useYjsProvider';
 import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { ExportDropdown } from '@/components/editor/ExportDropdown';
 
 const EditorPage = () => {
     const { id } = useParams<{ id: string }>();
@@ -24,6 +25,7 @@ const EditorPage = () => {
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [showLinkModal, setShowLinkModal] = useState(false);
+    const [editorInstance, setEditorInstance] = useState<any | null>(null);
 
     // Fetch document
     const { data: document, isLoading } = useQuery({
@@ -285,6 +287,7 @@ const EditorPage = () => {
                             </Button>
                         </>
                     )}
+                    <ExportDropdown editor={editorInstance} documentTitle={title} />
                     <ThemeToggle />
                 </div>
             </motion.div>
@@ -327,6 +330,7 @@ const EditorPage = () => {
                         onContentChange={(newContent) => {
                             if (!isReadOnly) setContent(newContent);
                         }}
+                        onEditorReady={setEditorInstance}
                     />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center text-muted-foreground">

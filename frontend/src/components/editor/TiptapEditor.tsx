@@ -1,4 +1,4 @@
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
@@ -20,9 +20,10 @@ interface TiptapEditorProps {
     editable?: boolean;
     onContentChange?: (content: string) => void;
     initialContent?: string;
+    onEditorReady?: (editor: Editor | null) => void;
 }
 
-const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentChange, initialContent }: TiptapEditorProps) => {
+const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentChange, initialContent, onEditorReady }: TiptapEditorProps) => {
     const editor = useEditor({
         enableContentCheck: true,
         onCreate: ({ editor: currentEditor }) => {
@@ -111,6 +112,18 @@ const TiptapEditor = ({ ydoc, provider, currentUser, editable = true, onContentC
             });
         }
     }, [editor, currentUser, provider]);
+
+    // Expose the editor instance to the parent component
+    useEffect(() => {
+        if (editor && onEditorReady) {
+            onEditorReady(editor);
+        }
+        return () => {
+            if (onEditorReady) {
+                onEditorReady(null);
+            }
+        };
+    }, [editor, onEditorReady]);
 
     // Track what content we last loaded from DB so we know if user has made edits
     const initializedContentRef = useRef<string | null>(null);

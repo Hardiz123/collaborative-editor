@@ -53,6 +53,10 @@ func Connect() error {
 				Username: username,
 				Password: password,
 			},
+			TimeoutsConfig: gocb.TimeoutsConfig{
+				KVTimeout:    10 * time.Second, // Increase KV timeout from 2.5s to 10s
+				QueryTimeout: 15 * time.Second, // Increase query timeout to 15s
+			},
 		})
 		if err == nil {
 			// Wait for the cluster to be ready

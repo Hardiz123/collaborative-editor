@@ -187,7 +187,9 @@ func (s *DocumentService) AddCollaborator(ctx context.Context, userID, docID str
 		return nil, errors.WrapError(errors.ErrInternalServer, fmt.Errorf("failed to update document: %w", err))
 	}
 
-	return s.toResponse(doc), nil
+	resp := s.toResponse(doc)
+	resp.Content = "" // Strip the heavy content for the collaborator response
+	return resp, nil
 }
 
 // ListDocuments lists documents for a user
@@ -299,11 +301,12 @@ func (s *DocumentService) checkAccess(ctx context.Context, doc *document.Documen
 // Helper: convert to response
 func (s *DocumentService) toResponse(doc *document.Document) *DocumentResponse {
 	return &DocumentResponse{
-		ID:        doc.ID,
-		Title:     doc.Title,
-		Content:   doc.Content,
-		OwnerID:   doc.OwnerID,
-		CreatedAt: doc.CreatedAt,
-		UpdatedAt: doc.UpdatedAt,
+		ID:              doc.ID,
+		Title:           doc.Title,
+		Content:         doc.Content,
+		OwnerID:         doc.OwnerID,
+		CollaboratorIDs: doc.CollaboratorIDs,
+		CreatedAt:       doc.CreatedAt,
+		UpdatedAt:       doc.UpdatedAt,
 	}
 }

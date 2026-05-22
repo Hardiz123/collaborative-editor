@@ -41,31 +41,54 @@ func Connect() error {
 		return fmt.Errorf("COUCHBASE_PASSWORD environment variable is not set")
 	}
 
-	// Connect to the cluster
+	// Connect to the cluster with retries
 	var err error
-	cluster, err = gocb.Connect(connectionString, gocb.ClusterOptions{
-		Authenticator: gocb.PasswordAuthenticator{
-			Username: username,
-			Password: password,
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to connect to Couchbase: %w", err)
+	maxRetries := 5
+	retryDelay := 3 * time.Second
+
+	for i := 1; i <= maxRetries; i++ {
+		log.Printf("Connecting to Couchbase (attempt %d/%d)...", i, maxRetries)
+		cluster, err = gocb.Connect(connectionString, gocb.ClusterOptions{
+			Authenticator: gocb.PasswordAuthenticator{
+				Username: username,
+				Password: password,
+			},
+		})
+		if err == nil {
+			// Wait for the cluster to be ready
+			err = cluster.WaitUntilReady(10*time.Second, nil)
+			if err == nil {
+				break
+			}
+		}
+
+		log.Printf("Connection attempt %d failed: %v. Retrying in %v...", i, err, retryDelay)
+		if i < maxRetries {
+			time.Sleep(retryDelay)
+		}
 	}
 
-	// Wait for the cluster to be ready
-	err = cluster.WaitUntilReady(10*time.Second, nil)
 	if err != nil {
-		return fmt.Errorf("failed to wait for cluster ready: %w", err)
+		return fmt.Errorf("failed to connect to Couchbase after %d attempts: %w", maxRetries, err)
 	}
 
 	// Open the bucket
 	bucket = cluster.Bucket(bucketName)
 
-	// Wait for the bucket to be ready
-	err = bucket.WaitUntilReady(10*time.Second, nil)
+	// Wait for the bucket to be ready with retries
+	for i := 1; i <= maxRetries; i++ {
+		err = bucket.WaitUntilReady(10*time.Second, nil)
+		if err == nil {
+			break
+		}
+		log.Printf("Bucket not ready (attempt %d/%d): %v. Retrying in %v...", i, maxRetries, err, retryDelay)
+		if i < maxRetries {
+			time.Sleep(retryDelay)
+		}
+	}
+
 	if err != nil {
-		return fmt.Errorf("failed to wait for bucket ready: %w", err)
+		return fmt.Errorf("failed to wait for bucket ready after %d attempts: %w", maxRetries, err)
 	}
 
 	// Ensure user scope and collection exist

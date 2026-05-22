@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { Download, ChevronDown, File, FileText, FileCode, Loader2 } from 'lucide-react';
+import { Download, ChevronDown, FileText, FileCode, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 import TurndownService from 'turndown';
 
 interface ExportDropdownProps {
@@ -213,154 +211,6 @@ export const ExportDropdown = ({ editor, documentTitle }: ExportDropdownProps) =
         }
     };
 
-    // Export 3: PDF
-    const handleExportPDF = async () => {
-        setExportingType('pdf');
-        try {
-            // Attach html2canvas to window context so jsPDF can resolve it
-            (window as any).html2canvas = html2canvas;
-
-            // Find the ProseMirror content container
-            const container = document.querySelector('.ProseMirror');
-            if (!container) {
-                console.error('ProseMirror editor container not found');
-                return;
-            }
-
-            // Clone the container to isolate it off-screen and style for printing
-            const clone = container.cloneNode(true) as HTMLElement;
-            clone.classList.remove('dark', 'dark:prose-invert', 'ProseMirror-focused');
-            
-            // Apply standard print layout overrides
-            clone.style.width = '720px';
-            clone.style.padding = '40px';
-            clone.style.backgroundColor = '#ffffff';
-            clone.style.color = '#1f2937';
-            clone.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-            clone.style.lineHeight = '1.6';
-            
-            // Append explicit styling to clone tags to prevent css inherit issues
-            const paragraphs = clone.querySelectorAll('p');
-            paragraphs.forEach(node => {
-                const p = node as HTMLElement;
-                p.style.marginBottom = '1.25rem';
-                p.style.fontSize = '14px';
-                p.style.color = '#374151';
-            });
-
-            const headings = clone.querySelectorAll('h1, h2, h3, h4, h5, h6');
-            headings.forEach(node => {
-                const h = node as HTMLElement;
-                const tag = h.tagName.toLowerCase();
-                h.style.color = '#111827';
-                h.style.fontWeight = '700';
-                h.style.marginTop = '1.75rem';
-                h.style.marginBottom = '0.75rem';
-                if (tag === 'h1') h.style.fontSize = '26px';
-                else if (tag === 'h2') h.style.fontSize = '20px';
-                else h.style.fontSize = '16px';
-            });
-
-            const codeBlocks = clone.querySelectorAll('pre');
-            codeBlocks.forEach(node => {
-                const pre = node as HTMLElement;
-                pre.style.backgroundColor = '#f3f4f6';
-                pre.style.padding = '12px';
-                pre.style.borderRadius = '6px';
-                pre.style.fontFamily = 'monospace';
-                pre.style.fontSize = '13px';
-                pre.style.overflowX = 'auto';
-                pre.style.margin = '1rem 0';
-                pre.style.border = '1px solid #e5e7eb';
-            });
-
-            const inlineCodes = clone.querySelectorAll('code');
-            inlineCodes.forEach(node => {
-                const code = node as HTMLElement;
-                // Ignore code tags nested inside pre blocks (they inherit pre styles)
-                if (code.parentElement?.tagName.toLowerCase() !== 'pre') {
-                    code.style.backgroundColor = '#f3f4f6';
-                    code.style.padding = '2px 4px';
-                    code.style.borderRadius = '4px';
-                    code.style.fontFamily = 'monospace';
-                    code.style.fontSize = '13px';
-                }
-            });
-
-            const blockquotes = clone.querySelectorAll('blockquote');
-            blockquotes.forEach(node => {
-                const bq = node as HTMLElement;
-                bq.style.borderLeft = '4px solid #d1d5db';
-                bq.style.paddingLeft = '16px';
-                bq.style.color = '#4b5563';
-                bq.style.fontStyle = 'italic';
-                bq.style.margin = '1.5rem 0';
-            });
-
-            const lists = clone.querySelectorAll('ul, ol');
-            lists.forEach(node => {
-                const list = node as HTMLElement;
-                list.style.paddingLeft = '24px';
-                list.style.marginBottom = '1.25rem';
-            });
-
-            // Clean up collaboration cursor elements so they don't block text
-            const carets = clone.querySelectorAll(
-                '.collaboration-cursor__caret, .collaboration-cursor__label, .collaboration-carets__caret, .collaboration-carets__label, .collaboration-caret, .collaboration-caret__label'
-            );
-            carets.forEach(el => el.remove());
-
-            // Prepend the document title
-            const titleHeader = document.createElement('h1');
-            titleHeader.textContent = documentTitle || 'Untitled Document';
-            titleHeader.style.fontSize = '28px';
-            titleHeader.style.fontWeight = '800';
-            titleHeader.style.color = '#111827';
-            titleHeader.style.borderBottom = '2px solid #e5e7eb';
-            titleHeader.style.paddingBottom = '10px';
-            titleHeader.style.marginBottom = '25px';
-            titleHeader.style.marginTop = '0px';
-            clone.insertBefore(titleHeader, clone.firstChild);
-
-            // Temporarily append the clone to the document body (off-screen)
-            clone.style.position = 'fixed';
-            clone.style.top = '-9999px';
-            clone.style.left = '-9999px';
-            document.body.appendChild(clone);
-
-            // Initialize jsPDF (A4 size: 595 x 842 pt)
-            const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'pt',
-                format: 'a4'
-            });
-
-            // Render DOM to PDF
-            await pdf.html(clone, {
-                html2canvas: {
-                    scale: 1.5, // Balance resolution and bundle size
-                    useCORS: true,
-                    logging: false,
-                    backgroundColor: '#ffffff'
-                },
-                callback: function (doc) {
-                    doc.save(getFilename('pdf'));
-                    document.body.removeChild(clone);
-                },
-                margin: [40, 40, 40, 40], // Margins: Top, Left, Bottom, Right
-                autoPaging: 'text',
-                x: 0,
-                y: 0,
-                width: 515, // A4 width (595) minus left/right margin (40*2) = 515
-                windowWidth: 720
-            });
-        } catch (error) {
-            console.error('Failed to export PDF:', error);
-        } finally {
-            setExportingType(null);
-            setIsOpen(false);
-        }
-    };
 
     return (
         <div className="relative" ref={dropdownRef}>
@@ -389,14 +239,7 @@ export const ExportDropdown = ({ editor, documentTitle }: ExportDropdownProps) =
                         transition={{ duration: 0.15 }}
                         className="absolute right-0 mt-2 w-48 rounded-xl border border-border bg-card/85 backdrop-blur-md p-1.5 shadow-xl z-50 origin-top-right"
                     >
-                        <button
-                            onClick={handleExportPDF}
-                            disabled={exportingType !== null}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-card-foreground hover:bg-muted/80 rounded-lg transition-colors cursor-pointer text-left"
-                        >
-                            <File className="h-4 w-4 text-red-500" />
-                            <span>Export as PDF</span>
-                        </button>
+
                         <button
                             onClick={handleExportMarkdown}
                             disabled={exportingType !== null}

@@ -41,6 +41,12 @@ type CreateDocumentRequest struct {
 	Content string `json:"content"`
 }
 
+// UpdateDocumentRequest represents a request to update a document (with optional fields)
+type UpdateDocumentRequest struct {
+	Title   *string `json:"title,omitempty"`
+	Content *string `json:"content,omitempty"`
+}
+
 // AddCollaboratorRequest represents a request to add a collaborator
 type AddCollaboratorRequest struct {
 	Email string `json:"email"`
@@ -50,7 +56,7 @@ type AddCollaboratorRequest struct {
 type DocumentResponse struct {
 	ID              string    `json:"id"`
 	Title           string    `json:"title"`
-	Content         string    `json:"content"`
+	Content         string    `json:"content,omitempty"`
 	OwnerID         string    `json:"owner_id"`
 	CollaboratorIDs []string  `json:"collaborator_ids"`
 	CreatedAt       time.Time `json:"created_at"`
@@ -108,8 +114,9 @@ func (s *DocumentService) GetDocument(ctx context.Context, userID, docID string)
 }
 
 // UpdateDocument updates a document if the user has access
-func (s *DocumentService) UpdateDocument(ctx context.Context, userID, docID string, req *CreateDocumentRequest) (*DocumentResponse, error) {
-	doc, err := s.docRepo.GetByID(ctx, docID)
+func (s *DocumentService) UpdateDocument(ctx context.Context, userID, docID string, req *UpdateDocumentRequest) (*DocumentResponse, error) {
+	// Fetch metadata only to check access, avoiding fetching the heavy content field
+	doc, err := s.docRepo.GetMetadataByID(ctx, docID)
 	if err != nil {
 		return nil, errors.WrapError(errors.ErrInternalServer, err)
 	}
@@ -118,19 +125,26 @@ func (s *DocumentService) UpdateDocument(ctx context.Context, userID, docID stri
 		return nil, errors.NewAppError(errors.ErrForbidden.Code, "Access denied", nil)
 	}
 
-	if req.Title != "" {
-		doc.Title = req.Title
-	}
-	// Content update - in a real collaborative app, this would be more complex (OT/CRDT)
-	// For now, we just overwrite
-	doc.Content = req.Content
-	doc.UpdatedAt = time.Now()
-
-	if err := s.docRepo.Update(ctx, doc); err != nil {
-		return nil, errors.WrapError(errors.ErrInternalServer, fmt.Errorf("failed to update document: %w", err))
+	// Update only the provided fields in the database
+	if err := s.docRepo.UpdateFields(ctx, docID, req.Title, req.Content); err != nil {
+		return nil, errors.WrapError(errors.ErrInternalServer, fmt.Errorf("failed to update document fields: %w", err))
 	}
 
-	return s.toResponse(doc), nil
+	// Build the response (Content is intentionally omitted so it doesn't inflate response size)
+	resp := &DocumentResponse{
+		ID:              doc.ID,
+		Title:           doc.Title,
+		OwnerID:         doc.OwnerID,
+		CollaboratorIDs: doc.CollaboratorIDs,
+		CreatedAt:       doc.CreatedAt,
+		UpdatedAt:       time.Now(),
+	}
+
+	if req.Title != nil {
+		resp.Title = *req.Title
+	}
+
+	return resp, nil
 }
 
 // DeleteDocument deletes a document (only owner)

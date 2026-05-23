@@ -67,7 +67,7 @@ func (h *DocumentHandler) GetDocument(w http.ResponseWriter, r *http.Request) {
 func (h *DocumentHandler) UpdateDocument(w http.ResponseWriter, r *http.Request) {
 	docID := r.PathValue("id")
 
-	var req services.CreateDocumentRequest
+	var req services.UpdateDocumentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondWithError(w, errors.WrapError(errors.ErrInvalidInput, err))
 		return

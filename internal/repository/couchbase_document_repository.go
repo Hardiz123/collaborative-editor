@@ -192,3 +192,32 @@ func (r *CouchbaseDocumentRepository) AddCollaboratorID(ctx context.Context, id 
 	return nil
 }
 
+// UpdateFields updates selected fields of a document atomically using Sub-Doc MutateIn
+func (r *CouchbaseDocumentRepository) UpdateFields(ctx context.Context, id string, title *string, content *string) error {
+	collection := db.GetDocumentsCollection()
+	documentID := fmt.Sprintf("doc:%s", id)
+
+	var ops []gocb.MutateInSpec
+	if title != nil {
+		ops = append(ops, gocb.UpsertSpec("title", *title, nil))
+	}
+	if content != nil {
+		ops = append(ops, gocb.UpsertSpec("content", *content, nil))
+	}
+
+	if len(ops) == 0 {
+		return nil
+	}
+
+	ops = append(ops, gocb.UpsertSpec("updated_at", time.Now(), nil))
+
+	_, err := collection.MutateIn(documentID, ops, &gocb.MutateInOptions{
+		Context: ctx,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update document fields: %w", err)
+	}
+
+	return nil
+}
+

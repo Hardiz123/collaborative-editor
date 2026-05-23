@@ -15,6 +15,11 @@ export interface CreateDocumentRequest {
   content: string;
 }
 
+export interface UpdateDocumentRequest {
+  title?: string;
+  content?: string;
+}
+
 export interface AddCollaboratorRequest {
   email: string;
 }
@@ -48,7 +53,7 @@ export const getDocument = async (id: string) => {
   return response.data;
 };
 
-export const updateDocument = async (id: string, data: CreateDocumentRequest) => {
+export const updateDocument = async (id: string, data: UpdateDocumentRequest) => {
   const response = await api.put<Document>(`/documents/${id}`, data);
   return response.data;
 };

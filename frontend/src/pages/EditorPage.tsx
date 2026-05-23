@@ -127,7 +127,7 @@ const EditorPage = () => {
 
     // Save mutations
     const titleMutation = useMutation({
-        mutationFn: (newTitle: string) => updateDocument(id!, { title: newTitle, content: contentRef.current }),
+        mutationFn: (newTitle: string) => updateDocument(id!, { title: newTitle }),
         onSuccess: (_, variables) => {
             if (originalDocumentRef.current) {
                 originalDocumentRef.current.title = variables;
@@ -136,7 +136,7 @@ const EditorPage = () => {
     });
 
     const contentMutation = useMutation({
-        mutationFn: (newContent: string) => updateDocument(id!, { title: titleRef.current, content: newContent }),
+        mutationFn: (newContent: string) => updateDocument(id!, { content: newContent }),
         onSuccess: (_, variables) => {
             if (originalDocumentRef.current) {
                 originalDocumentRef.current.content = variables;
@@ -197,10 +197,11 @@ const EditorPage = () => {
                 console.log('Unmounting, saving pending changes synchronous-like...');
                 // Note: React Query's mutate is asynchronous, but we can do a fire-and-forget raw API call 
                 // to be safer during unmount, or just rely on the browser not killing the request immediately
-                updateDocument(id, {
-                    title: currentTitle,
-                    content: currentContent
-                }).catch(err => console.error('Failed to save on unmount', err));
+                const payload: { title?: string; content?: string } = {};
+                if (hasTitleChanged) payload.title = currentTitle;
+                if (hasContentChanged) payload.content = currentContent;
+
+                updateDocument(id, payload).catch(err => console.error('Failed to save on unmount', err));
             }
         };
     }, [id]);

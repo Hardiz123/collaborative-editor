@@ -96,6 +96,28 @@ func (h *Hub) registerClient(client *Client) {
 	log.Printf("Client %s (user: %s) joined document %s. Total clients: %d",
 		client.ID, client.Username, client.DocumentID, len(h.documents[client.DocumentID]))
 
+	// Send PRESENCE message (list of active users) to the newly joined client
+	activeUsers := h.GetActiveUsers(client.DocumentID)
+	presenceMessage := struct {
+		Type       string     `json:"type"`
+		DocumentID string     `json:"document_id"`
+		Users      []UserInfo `json:"users"`
+		Timestamp  time.Time  `json:"timestamp"`
+	}{
+		Type:       "PRESENCE",
+		DocumentID: client.DocumentID,
+		Users:      activeUsers,
+		Timestamp:  time.Now(),
+	}
+
+	presenceBytes, err := json.Marshal(presenceMessage)
+	if err == nil {
+		select {
+		case client.Send <- presenceBytes:
+		default:
+		}
+	}
+
 	// Broadcast JOIN message to all clients in the document (including the new one)
 	joinMessage := &Message{
 		Type:       "JOIN",

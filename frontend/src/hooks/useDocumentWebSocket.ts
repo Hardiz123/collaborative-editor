@@ -17,6 +17,11 @@ interface WebSocketMessage {
     username: string;
     email: string;
   };
+  users?: {
+    user_id: string;
+    username: string;
+    email: string;
+  }[];
   timestamp: string;
 }
 
@@ -108,7 +113,26 @@ export function useDocumentWebSocket({ documentId, enabled }: UseDocumentWebSock
           const message: WebSocketMessage = JSON.parse(event.data);
           console.log('WebSocket message:', message);
 
-          if (message.type === 'JOIN') {
+          if (message.type === 'PRESENCE') {
+            if (message.users) {
+              const uniqueUsers: Collaborator[] = [];
+              const seen = new Set<string>();
+              
+              message.users.forEach((u) => {
+                if (!seen.has(u.user_id)) {
+                  seen.add(u.user_id);
+                  uniqueUsers.push({
+                    userId: u.user_id,
+                    username: u.username,
+                    email: u.email,
+                    isCurrentUser: false,
+                  });
+                }
+              });
+              
+              setCollaborators(uniqueUsers);
+            }
+          } else if (message.type === 'JOIN') {
             // Add user to collaborators if not already present
             setCollaborators((prev) => {
               const exists = prev.some((c) => c.userId === message.user.user_id);

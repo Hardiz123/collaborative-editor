@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 
 interface Collaborator {
   userId: string;
@@ -26,12 +27,14 @@ interface UseDocumentWebSocketProps {
 
 export function useDocumentWebSocket({ documentId, enabled }: UseDocumentWebSocketProps) {
   const { user } = useAuth();
+  const toast = useToast();
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const isMountedRef = useRef(true); // Track if component is mounted
+  const wasConnectedRef = useRef(false);
 
   useEffect(() => {
     console.log('useDocumentWebSocket effect:', { enabled, documentId });
@@ -68,12 +71,20 @@ export function useDocumentWebSocket({ documentId, enabled }: UseDocumentWebSock
         console.log('WebSocket connected');
         setIsConnected(true);
         reconnectAttemptsRef.current = 0;
+        if (wasConnectedRef.current) {
+          toast.success('Reconnected to collaboration server!');
+        }
+        wasConnectedRef.current = true;
       };
 
       ws.onclose = () => {
         console.log('WebSocket disconnected');
         setIsConnected(false);
         wsRef.current = null;
+
+        if (isMountedRef.current && wasConnectedRef.current) {
+          toast.warning('Lost connection to collaboration server. Reconnecting...');
+        }
 
         // Only reconnect if component is still mounted
         if (isMountedRef.current && enabled && reconnectAttemptsRef.current < 5) {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Share2, Loader2, UserPlus } from 'lucide-react';
+import { ArrowLeft, Share2, Loader2, UserPlus, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import TiptapEditor from '@/components/editor/TiptapEditor';
@@ -28,10 +28,11 @@ const EditorPage = () => {
     const [editorInstance, setEditorInstance] = useState<any | null>(null);
 
     // Fetch document
-    const { data: document, isLoading } = useQuery({
+    const { data: document, isLoading, error: docError } = useQuery({
         queryKey: ['document', id],
         queryFn: () => getDocument(id!),
         enabled: !!id,
+        retry: false,
     });
 
     // WebSocket for real-time collaboration (presence)
@@ -220,6 +221,23 @@ const EditorPage = () => {
         return (
             <div className="h-screen w-full flex items-center justify-center bg-background">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+
+    if (docError) {
+        return (
+            <div className="h-screen w-full flex flex-col items-center justify-center bg-background gap-4 p-4 text-center">
+                <div className="p-4 bg-destructive/10 text-destructive rounded-full">
+                    <AlertTriangle className="h-8 w-8" />
+                </div>
+                <h1 className="text-2xl font-bold">Failed to load document</h1>
+                <p className="text-muted-foreground max-w-md">
+                    {((docError as any).response?.data?.error) || docError.message || "You do not have access to this document or it does not exist."}
+                </p>
+                <Button onClick={() => navigate('/dashboard')} variant="outline" className="mt-2">
+                    Back to Dashboard
+                </Button>
             </div>
         );
     }

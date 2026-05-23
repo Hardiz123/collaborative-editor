@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { addCollaborator } from '@/services/documents';
 import { Loader2 } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 interface CollaboratorModalProps {
     open: boolean;
@@ -23,6 +24,7 @@ export function CollaboratorModal({ open, onOpenChange, documentId }: Collaborat
     const [email, setEmail] = useState('');
     const [error, setError] = useState('');
     const queryClient = useQueryClient();
+    const toast = useToast();
 
     const mutation = useMutation({
         mutationFn: (email: string) => addCollaborator(documentId, email),
@@ -31,7 +33,7 @@ export function CollaboratorModal({ open, onOpenChange, documentId }: Collaborat
             setEmail('');
             setError('');
             queryClient.invalidateQueries({ queryKey: ['document', documentId] });
-            alert('Collaborator added successfully!');
+            toast.success('Collaborator added successfully!');
         },
         onError: (err: any) => {
             setError(err.response?.data?.error || 'Failed to add collaborator');

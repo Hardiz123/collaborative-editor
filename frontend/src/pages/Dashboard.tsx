@@ -18,11 +18,13 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { useToast } from '@/context/ToastContext';
 
 const Dashboard = () => {
     const { logout, isLoading: isAuthLoading } = useAuth();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const toast = useToast();
     const [isCreating, setIsCreating] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [documentToDelete, setDocumentToDelete] = useState<{ id: string, title: string } | null>(null);
@@ -45,10 +47,11 @@ const Dashboard = () => {
     const createMutation = useMutation({
         mutationFn: createDocument,
         onSuccess: (data) => {
+            toast.success('Document created successfully!');
             navigate(`/editor/${data.id}`);
         },
         onError: (err: any) => {
-            alert(err.response?.data?.error || 'Failed to create document');
+            toast.error(err.response?.data?.error || 'Failed to create document');
             setIsCreating(false);
         }
     });
@@ -57,11 +60,12 @@ const Dashboard = () => {
     const deleteMutation = useMutation({
         mutationFn: deleteDocument,
         onSuccess: () => {
+            toast.success('Document deleted successfully');
             queryClient.invalidateQueries({ queryKey: ['documents'] });
             setDocumentToDelete(null);
         },
         onError: (err: any) => {
-            alert(err.response?.data?.error || 'Failed to delete document');
+            toast.error(err.response?.data?.error || 'Failed to delete document');
         }
     });
 

@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './context/ToastContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -11,22 +12,24 @@ import SharedAccessPage from './pages/SharedAccessPage';
 function App() {
   return (
     <ThemeProvider>
-      <Router>
-        <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/shared/:id" element={<SharedAccessPage />} />
+      <ToastProvider>
+        <Router>
+          <AuthProvider>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/shared/:id" element={<SharedAccessPage />} />
 
-            <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/editor/:id" element={<EditorPage />} />
-            </Route>
+              <Route element={<ProtectedRoute />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/editor/:id" element={<EditorPage />} />
+              </Route>
 
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </AuthProvider>
-      </Router>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </AuthProvider>
+        </Router>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

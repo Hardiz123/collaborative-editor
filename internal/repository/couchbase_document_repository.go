@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"collaborative-editor/internal/db"
 	"collaborative-editor/pkg/document"
@@ -119,3 +120,75 @@ func (r *CouchbaseDocumentRepository) ListByUserID(ctx context.Context, userID s
 
 	return documents, nil
 }
+
+// GetMetadataByID retrieves only document metadata fields, bypassing the heavy Content field
+func (r *CouchbaseDocumentRepository) GetMetadataByID(ctx context.Context, id string) (*document.Document, error) {
+	collection := db.GetDocumentsCollection()
+	documentID := fmt.Sprintf("doc:%s", id)
+
+	ops := []gocb.LookupInSpec{
+		gocb.GetSpec("owner_id", nil),
+		gocb.GetSpec("collaborator_ids", nil),
+		gocb.GetSpec("title", nil),
+		gocb.GetSpec("created_at", nil),
+		gocb.GetSpec("updated_at", nil),
+	}
+
+	result, err := collection.LookupIn(documentID, ops, &gocb.LookupInOptions{
+		Context: ctx,
+	})
+	if err != nil {
+		if errors.Is(err, gocb.ErrDocumentNotFound) {
+			return nil, fmt.Errorf("document not found")
+		}
+		return nil, fmt.Errorf("failed to lookup document metadata: %w", err)
+	}
+
+	var docDoc document.DocumentDocument
+	docDoc.ID = id
+
+	var ownerID string
+	if err := result.ContentAt(0, &ownerID); err == nil {
+		docDoc.OwnerID = ownerID
+	}
+	var collaboratorIDs []string
+	if err := result.ContentAt(1, &collaboratorIDs); err == nil {
+		docDoc.CollaboratorIDs = collaboratorIDs
+	}
+	var title string
+	if err := result.ContentAt(2, &title); err == nil {
+		docDoc.Title = title
+	}
+	var createdAt time.Time
+	if err := result.ContentAt(3, &createdAt); err == nil {
+		docDoc.CreatedAt = createdAt
+	}
+	var updatedAt time.Time
+	if err := result.ContentAt(4, &updatedAt); err == nil {
+		docDoc.UpdatedAt = updatedAt
+	}
+
+	return document.FromDocument(&docDoc), nil
+}
+
+// AddCollaboratorID appends a collaborator ID to the document's collaborator_ids array atomically using Sub-Doc MutateIn
+func (r *CouchbaseDocumentRepository) AddCollaboratorID(ctx context.Context, id string, collaboratorID string) error {
+	collection := db.GetDocumentsCollection()
+	documentID := fmt.Sprintf("doc:%s", id)
+
+	ops := []gocb.MutateInSpec{
+		// ArrayAddUnique adds the value to the array if it doesn't already exist
+		gocb.ArrayAddUniqueSpec("collaborator_ids", collaboratorID, nil),
+		gocb.UpsertSpec("updated_at", time.Now(), nil),
+	}
+
+	_, err := collection.MutateIn(documentID, ops, &gocb.MutateInOptions{
+		Context: ctx,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to add collaborator via sub-doc: %w", err)
+	}
+
+	return nil
+}
+

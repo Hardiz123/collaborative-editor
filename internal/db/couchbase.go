@@ -121,6 +121,12 @@ func Connect() error {
 	}
 
 	log.Printf("Successfully connected to Couchbase bucket: %s", bucketName)
+
+	// Ensure indexes exist for performance
+	if err := ensureIndexes(); err != nil {
+		log.Printf("Warning: failed to ensure indexes: %v", err)
+	}
+
 	return nil
 }
 
@@ -347,3 +353,42 @@ func Close() {
 		cluster.Close(nil)
 	}
 }
+
+// ensureIndexes creates the necessary Couchbase N1QL indexes for optimized query lookup speeds
+func ensureIndexes() error {
+	log.Println("Ensuring database indexes exist for performance...")
+
+	queries := []struct {
+		name  string
+		query string
+	}{
+		{
+			name:  "idx_users_email",
+			query: fmt.Sprintf("CREATE INDEX idx_users_email IF NOT EXISTS ON `%s`.`user`.`users`(email)", bucketName),
+		},
+		{
+			name:  "idx_users_username",
+			query: fmt.Sprintf("CREATE INDEX idx_users_username IF NOT EXISTS ON `%s`.`user`.`users`(username)", bucketName),
+		},
+		{
+			name:  "idx_documents_owner",
+			query: fmt.Sprintf("CREATE INDEX idx_documents_owner IF NOT EXISTS ON `%s`.`documents`.`documents`(owner_id)", bucketName),
+		},
+		{
+			name:  "idx_documents_collaborators",
+			query: fmt.Sprintf("CREATE INDEX idx_documents_collaborators IF NOT EXISTS ON `%s`.`documents`.`documents`(DISTINCT ARRAY c FOR c IN collaborator_ids END)", bucketName),
+		},
+	}
+
+	for _, q := range queries {
+		_, err := cluster.Query(q.query, nil)
+		if err != nil {
+			log.Printf("Could not create index %s: %v", q.name, err)
+		} else {
+			log.Printf("Verified/Created index: %s", q.name)
+		}
+	}
+
+	return nil
+}
+

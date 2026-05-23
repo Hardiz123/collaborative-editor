@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"log"
 	"slices"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"collaborative-editor/internal/repository"
 	"collaborative-editor/pkg/document"
 	"collaborative-editor/pkg/sharedlink"
+	"collaborative-editor/pkg/user"
 
 	"github.com/google/uuid"
 )
@@ -155,19 +157,50 @@ func (s *DocumentService) AddCollaborator(ctx context.Context, userID, docID str
 		return nil, errors.NewAppError(errors.ErrInvalidInput.Code, "Email is required", nil)
 	}
 
-	doc, err := s.docRepo.GetByID(ctx, docID)
-	if err != nil {
-		return nil, errors.WrapError(errors.ErrInternalServer, err)
+	// Run document retrieval and collaborator retrieval in parallel to minimize latency
+	type docResult struct {
+		doc *document.Document
+		err error
 	}
+	type userResult struct {
+		user *user.User
+		err  error
+	}
+
+	docChan := make(chan docResult, 1)
+	userChan := make(chan userResult, 1)
+
+	go func() {
+		start := time.Now()
+		doc, err := s.docRepo.GetMetadataByID(ctx, docID)
+		log.Printf("[AddCollaborator] docRepo.GetMetadataByID (concurrent) took: %v", time.Since(start))
+		docChan <- docResult{doc: doc, err: err}
+	}()
+
+	go func() {
+		start := time.Now()
+		collaborator, err := s.userRepo.GetByEmail(ctx, req.Email)
+		log.Printf("[AddCollaborator] userRepo.GetByEmail (concurrent) took: %v", time.Since(start))
+		userChan <- userResult{user: collaborator, err: err}
+	}()
+
+	// Wait for both results
+	dRes := <-docChan
+	uRes := <-userChan
+
+	if dRes.err != nil {
+		return nil, errors.WrapError(errors.ErrInternalServer, dRes.err)
+	}
+	doc := dRes.doc
 
 	if doc.OwnerID != userID {
 		return nil, errors.NewAppError(errors.ErrForbidden.Code, "Only owner can add collaborators", nil)
 	}
 
-	collaborator, err := s.userRepo.GetByEmail(ctx, req.Email)
-	if err != nil {
+	if uRes.err != nil {
 		return nil, errors.NewAppError(errors.ErrNotFound.Code, "User not found with this email", nil)
 	}
+	collaborator := uRes.user
 
 	if collaborator.ID == doc.OwnerID {
 		return nil, errors.NewAppError(errors.ErrInvalidInput.Code, "Owner is already a collaborator", nil)
@@ -180,12 +213,17 @@ func (s *DocumentService) AddCollaborator(ctx context.Context, userID, docID str
 		}
 	}
 
+	// Add collaborator via atomic sub-doc mutate
+	updateStart := time.Now()
+	err := s.docRepo.AddCollaboratorID(ctx, docID, collaborator.ID)
+	log.Printf("[AddCollaborator] docRepo.AddCollaboratorID took: %v", time.Since(updateStart))
+	if err != nil {
+		return nil, errors.WrapError(errors.ErrInternalServer, err)
+	}
+
+	// Update local struct state to formulate final response
 	doc.CollaboratorIDs = append(doc.CollaboratorIDs, collaborator.ID)
 	doc.UpdatedAt = time.Now()
-
-	if err := s.docRepo.Update(ctx, doc); err != nil {
-		return nil, errors.WrapError(errors.ErrInternalServer, fmt.Errorf("failed to update document: %w", err))
-	}
 
 	resp := s.toResponse(doc)
 	resp.Content = "" // Strip the heavy content for the collaborator response

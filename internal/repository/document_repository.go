@@ -10,7 +10,9 @@ import (
 type DocumentRepository interface {
 	Create(ctx context.Context, doc *document.Document) error
 	GetByID(ctx context.Context, id string) (*document.Document, error)
+	GetMetadataByID(ctx context.Context, id string) (*document.Document, error)
 	Update(ctx context.Context, doc *document.Document) error
+	AddCollaboratorID(ctx context.Context, id string, collaboratorID string) error
 	Delete(ctx context.Context, id string) error
 	ListByUserID(ctx context.Context, userID string) ([]*document.Document, error)
 }
